@@ -215,9 +215,11 @@ curl "http://localhost:8888/compare/dot_product?index1=0&index2=1"
 - **Method**: `POST`
 - **Content-Type**: `application/json`
 - **Request Body**: JSON array representing the input vector.
+- **Optional query parameter**: `number=(int)` The number of nearest vectors to return - default is 1.
+
 
 ```sh
-curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39]' http://localhost:8888/nearest
+curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39]' "http://localhost:8888/nearest"
 ```
 
 **Response**:
