@@ -83,7 +83,7 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
         return ret == MHD_YES ? MHD_YES : MHD_NO;
     }
 
-    // Convert the vector to a JSON array
+    // Convert the vector to a JSON array with precise float formatting
     cJSON* json_array = cJSON_CreateArray();
     if (!json_array) {
         cJSON_Delete(json_response);
@@ -100,7 +100,10 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
         cJSON_AddItemToArray(json_array, cJSON_CreateNumber(vec->data[i]));
     }
 
+    cJSON_AddNumberToObject(json_response, "index", index);
     cJSON_AddItemToObject(json_response, "vector", json_array);
+    cJSON_AddNumberToObject(json_response, "median_point", vec->median_point);
+
     char* response_str = cJSON_PrintUnformatted(json_response);
     cJSON_Delete(json_response);
 

@@ -39,8 +39,9 @@ void vector_db_insert(VectorDatabase* db, Vector vec) {
             return;
         }
     }
+    vec.median_point = calculate_median(vec.data, vec.dimension);
     db->vectors[db->size++] = vec;
-    printf("Inserted vector at index %zu with dimension %zu\n", db->size - 1, vec.dimension);
+    printf("Inserted vector at index %zu with dimension %zu and median_point %f\n", db->size - 1, vec.dimension, vec.median_point);
 }
 
 Vector* vector_db_read(VectorDatabase* db, size_t index) {
@@ -56,14 +57,17 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
 }
 
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
-    if (vec.dimension == 0 || vec.data == NULL) {
-        fprintf(stderr, "Invalid vector data\n");
-        return;
-    }
     if (index < db->size) {
-        free(db->vectors[index].data);
+        vec.median_point = calculate_median(vec.data, vec.dimension);
         db->vectors[index] = vec;
-        printf("Updated vector at index %zu with dimension %zu\n", index, vec.dimension);
+        printf("Updated vector at index %zu to: (", index);
+        for (size_t i = 0; i < vec.dimension; i++) {
+            printf("%f", vec.data[i]);
+            if (i < vec.dimension - 1) {
+                printf(", ");
+            }
+        }
+        printf("), Median Point: %f\n", vec.median_point);
     }
 }
 
@@ -104,9 +108,10 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
             fprintf(stderr, "Invalid vector at index %zu, skipping\n", i);
             continue;
         }
-        printf("Saving vector at index %zu with dimension %zu\n", i, db->vectors[i].dimension);
+        printf("Saving vector at index %zu with dimension %zu and median point %f\n", i, db->vectors[i].dimension, db->vectors[i].median_point);
         fwrite(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         fwrite(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
+        fwrite(&db->vectors[i].median_point, sizeof(double), 1, file); // Save the median point
     }
 
     fclose(file);
@@ -137,19 +142,25 @@ VectorDatabase* vector_db_load(const char* filename) {
 
     for (size_t i = 0; i < db->size; ++i) {
         fread(&db->vectors[i].dimension, sizeof(size_t), 1, file);
-        if (db->vectors[i].dimension == 0) {
-            fprintf(stderr, "Invalid dimension for vector at index %zu, skipping\n", i);
-            continue;
-        }
         db->vectors[i].data = (double*)malloc(db->vectors[i].dimension * sizeof(double));
+        if (!db->vectors[i].data) {
+            for (size_t j = 0; j < i; ++j) {
+                free(db->vectors[j].data);
+            }
+            free(db->vectors);
+            free(db);
+            fclose(file);
+            return NULL;
+        }
         fread(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
-        printf("Loaded vector at index %zu with dimension %zu\n", i, db->vectors[i].dimension);
+        fread(&db->vectors[i].median_point, sizeof(double), 1, file);
     }
 
     fclose(file);
     printf("Database loaded from %s\n", filename);
     return db;
 }
+
 
 
 
@@ -191,4 +202,13 @@ float dot_product(Vector vec1, Vector vec2) {
         result += vec1.data[i] * vec2.data[i];
     }
     return result;
+}
+
+double calculate_median(double* data, size_t dimension) {
+    // Simple test - need to implement kd-tree later
+    if (dimension % 2 == 0) {
+        return (data[dimension / 2 - 1] + data[dimension / 2]) / 2.0;
+    } else {
+        return data[dimension / 2];
+    }
 }

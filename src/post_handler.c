@@ -120,13 +120,32 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         vec.data[i] = item->valuedouble;
     }
 
-    vector_db_insert((VectorDatabase*)cls, vec);
+    vec.median_point = calculate_median(vec.data, vec.dimension);
+    VectorDatabase* db = (VectorDatabase*)cls;
+    size_t index = db->size;
+    vector_db_insert(db, vec);
+
+    // Create JSON response
+    cJSON *response_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response_json, "index", index);
+
+    cJSON *vector_json = cJSON_CreateArray();
+    for (size_t i = 0; i < vec.dimension; i++) {
+        cJSON_AddItemToArray(vector_json, cJSON_CreateNumber(vec.data[i]));
+    }
+    cJSON_AddItemToObject(response_json, "vector", vector_json);
+    cJSON_AddNumberToObject(response_json, "median_point", vec.median_point);
+
+    char *response_str = cJSON_PrintUnformatted(response_json);
+    cJSON_Delete(response_json);
     cJSON_Delete(json);
     free(con_data->data);
     free(con_data);
     *con_cls = NULL;
 
-    struct MHD_Response* response = MHD_create_response_from_buffer(0, "", MHD_RESPMEM_PERSISTENT);
+    struct MHD_Response* response = MHD_create_response_from_buffer(strlen(response_str),
+                                                                    (void*)response_str, MHD_RESPMEM_MUST_FREE);
+    MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     return ret == MHD_YES ? MHD_YES : MHD_NO;

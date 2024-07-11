@@ -13,6 +13,9 @@ enum MHD_Result compare_handler(void* cls, struct MHD_Connection* connection,
                                 const char* version, const char* upload_data,
                                 size_t* upload_data_size, void** con_cls);
 
-float cosine_similarity(Vector vec1, Vector vec2);
-
+enum MHD_Result nearest_handler(void* cls, struct MHD_Connection* connection,
+                                const char* url, const char* method,
+                                const char* version, const char* upload_data,
+                                size_t* upload_data_size, void** con_cls);
+                                
 #endif /* COMPARE_HANDLER_H */
