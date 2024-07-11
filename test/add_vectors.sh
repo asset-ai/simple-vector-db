@@ -3,7 +3,7 @@
 # Seed the random number generator only once
 RANDOM=$$$(date +%s)
 
-for i in $(seq 1 300); do
+for i in $(seq 1 100000); do
   vector_size=$(( (RANDOM % 10) + 1 ))
   vector="["
   for ((j=0; j<$vector_size; j++)); do
