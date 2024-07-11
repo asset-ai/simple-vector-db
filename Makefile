@@ -1,11 +1,11 @@
 # Define the compiler and the flags
 CC = gcc
-CFLAGS = -Wall -I/opt/homebrew/include -I./include -g
+CFLAGS = -Wall -I/opt/homebrew/include -I./include
 # For debug add -g
 # lldb ./executable/vector_db_server
 # run
 # br 
-LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson -g
+LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson
 
 # Define the target executable and directory
 TARGET_DIR = executable
