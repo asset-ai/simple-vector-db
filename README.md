@@ -14,6 +14,7 @@ Simple Vector DB is a lightweight, efficient, and easy-to-use vector database de
   - [Updating the Makefile](#updating-the-makefile)
 - [Usage](#usage)
   - [Starting the Server](#starting-the-server)
+    - [Fill Database with Dummy vector](#fill-database-with-dummy-vector)
   - [API Endpoints](#api-endpoints)
     - [Insert a Vector](#insert-a-vector)
     - [Retrieve a Vector](#retrieve-a-vector)
@@ -138,6 +139,14 @@ You can start the server on the default port (8888) or specify a custom port usi
 
 # Start the server on a custom port (e.g., 8080)
 ./executable/vector_db_server -p 8080
+```
+
+### Fill Database with Dummy vector
+You can fill the database with different vectors of different dimensions. Randomly generated.
+```sh
+# Change execution of the file
+chmod +x ./test/add_vectors.sh
+./test/add_vectors.sh
 ```
 
 ### API Endpoints
