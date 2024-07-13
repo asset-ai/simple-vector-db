@@ -1,6 +1,6 @@
 # Simple Vector DB
 
-Simple Vector DB is a lightweight, efficient, and easy-to-use vector database designed to store, retrieve, and manage high-dimensional vectors. It supports operations such as insertion, update, deletion, and comparison of vectors using cosine similarity, Euclidean distance, and dot product.
+Simple Vector DB is a lightweight, efficient, and easy-to-use vector database designed to store, retrieve, and manage high-dimensional vectors. It supports operations such as insertion, update, deletion, and comparison of vectors using cosine similarity, Euclidean distance, and dot product. Additionally, it allows for finding the nearest vector based on KD-tree median points.
 
 ## Table of Contents
 
@@ -14,12 +14,14 @@ Simple Vector DB is a lightweight, efficient, and easy-to-use vector database de
   - [Updating the Makefile](#updating-the-makefile)
 - [Usage](#usage)
   - [Starting the Server](#starting-the-server)
+    - [Fill Database with Dummy vector](#fill-database-with-dummy-vector)
   - [API Endpoints](#api-endpoints)
     - [Insert a Vector](#insert-a-vector)
     - [Retrieve a Vector](#retrieve-a-vector)
     - [Update a Vector](#update-a-vector)
     - [Delete a Vector](#delete-a-vector)
     - [Compare Vectors](#compare-vectors)
+    - [Find Nearest Vector](#find-nearest-vector)
 - [Build and Run](#build-and-run)
 - [Contributing](#contributing)
 - [License](#license)
@@ -29,6 +31,7 @@ Simple Vector DB is a lightweight, efficient, and easy-to-use vector database de
 - **Efficient Vector Storage**: Stores high-dimensional vectors with dynamic allocation.
 - **Vector Operations**: Supports insertion, retrieval, update, and deletion of vectors.
 - **Comparison Metrics**: Compare vectors using cosine similarity, Euclidean distance, and dot product.
+- **Nearest Vector Search**: Find the nearest vector based on KD-tree median points.
 - **RESTful API**: Simple and intuitive API endpoints for easy integration.
 - **Persistent Storage**: Save and load vector databases from disk.
 
@@ -115,7 +118,7 @@ After installing the libraries, you need to find the paths to `libmicrohttpd.h` 
 
 ### Updating the Makefile
 
-Update your Makefile to include the correct paths for the headers and libraries. Below is the two lines that need to be updated:
+Update your Makefile to include the correct paths for the headers and libraries. Below are the two lines that need to be updated:
 
 ```makefile
 CFLAGS = -Wall -I/opt/homebrew/include -I./include
@@ -136,6 +139,14 @@ You can start the server on the default port (8888) or specify a custom port usi
 
 # Start the server on a custom port (e.g., 8080)
 ./executable/vector_db_server -p 8080
+```
+
+### Fill Database with Dummy vector
+You can fill the database with different vectors of different dimensions. Randomly generated.
+```sh
+# Change execution of the file
+chmod +x ./test/add_vectors.sh
+./test/add_vectors.sh
 ```
 
 ### API Endpoints
@@ -207,6 +218,31 @@ curl "http://localhost:8888/compare/euclidean_distance?index1=0&index2=1"
 curl "http://localhost:8888/compare/dot_product?index1=0&index2=1"
 ```
 
+#### Find Nearest Vector
+
+- **Endpoint**: `/nearest`
+- **Method**: `POST`
+- **Content-Type**: `application/json`
+- **Request Body**: JSON array representing the input vector.
+- **Optional query parameter**: `number=(int)` The number of nearest vectors to return - default is 1.
+
+
+```sh
+curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39]' "http://localhost:8888/nearest"
+```
+
+**Response**:
+
+```json
+{
+  "index": 2,
+  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39],
+  "median_point": 3.0
+}
+```
+
+This response indicates that the nearest vector is at index 2, and it includes the vector and its median point.
+
 ## Build and Run
 
 To build and run Simple Vector DB, execute the following commands:
@@ -237,4 +273,6 @@ We welcome contributions to Simple Vector DB! Please fork the repository, create
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT
+
+ License - see the [LICENSE](LICENSE) file for details.

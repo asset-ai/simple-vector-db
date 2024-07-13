@@ -6,6 +6,7 @@
 typedef struct {
     size_t dimension;
     double* data;
+    double median_point;
 } Vector;
 
 typedef struct {
@@ -15,7 +16,7 @@ typedef struct {
 } VectorDatabase;
 
 VectorDatabase* vector_db_init(size_t initial_capacity);
-void vector_db_insert(VectorDatabase* db, Vector vec);
+size_t vector_db_insert(VectorDatabase* db, Vector vec);
 Vector* vector_db_read(VectorDatabase* db, size_t index);
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec);
 void vector_db_delete(VectorDatabase* db, size_t index);
@@ -28,4 +29,6 @@ float cosine_similarity(Vector vec1, Vector vec2);
 float euclidean_distance(Vector vec1, Vector vec2);
 float dot_product(Vector vec1, Vector vec2); 
 
+// nearest function
+double calculate_median(double* data, size_t dimension);
 #endif /* VECTOR_DATABASE_H */

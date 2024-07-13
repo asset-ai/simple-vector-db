@@ -65,6 +65,14 @@ static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
     return compare_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+static enum MHD_Result ahc_nearest(void *cls, struct MHD_Connection *connection,
+                                   const char *url, const char *method,
+                                   const char *version,
+                                   const char *upload_data,
+                                   size_t *upload_data_size, void **con_cls) {
+    return nearest_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
+
 static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connection,
                                       const char *url, const char *method,
                                       const char *version,
@@ -82,6 +90,8 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
         return ahc_put(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
     } else if (strcmp(method, "DELETE") == 0 && strcmp(url, "/vector") == 0) {
         return ahc_delete(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    } else if (strcmp(method, "POST") == 0 && strcmp(url, "/nearest") == 0) {
+        return ahc_nearest(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
 
     // If the URL is not recognized, return a 404 Not Found response
@@ -143,11 +153,12 @@ int main(int argc, char* argv[]) {
                     printf(", ");
                 }
             }
-            printf(")\n");
+            printf("), Median Point: %f\n", vec->median_point);
         } else {
             printf("Failed to read vector at index %zu\n", i);
         }
     }
+
 
     struct MHD_Daemon *daemon;
 
