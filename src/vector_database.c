@@ -79,12 +79,10 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
         }
         db->vectors = new_vectors;
     }
-    // Calculate and store the median point
-    vec.median_point = calculate_median(vec.data, vec.dimension); 
     db->vectors[db->size] = vec;
     // Insert the vector into the KD-Tree
     kdtree_insert(db->kdtree, vec.data, db->size);
-    printf("Inserted vector at index %zu with dimension %zu and median_point %f\n", db->size, vec.dimension, vec.median_point);
+    printf("Inserted vector at index %zu with dimension %zu\n", db->size, vec.dimension);
     return db->size++;
 }
 
@@ -113,8 +111,6 @@ void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
     if (index < db->size) {
         // Free the old vector data
         free(db->vectors[index].data);
-        // Calculate and store the median point
-        vec.median_point = calculate_median(vec.data, vec.dimension); 
         db->vectors[index] = vec;
         // Insert the updated vector into the KD-Tree
         kdtree_insert(db->kdtree, vec.data, index);
@@ -165,8 +161,6 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
         printf("Saving vector at index %zu with dimension %zu\n", i, db->vectors[i].dimension);
         fwrite(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         fwrite(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
-        // Save the median point
-        fwrite(&db->vectors[i].median_point, sizeof(double), 1, file);
     }
 
     fclose(file);
@@ -219,8 +213,6 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
             return NULL;
         }
         fread(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
-        // Load the median point
-        fread(&db->vectors[i].median_point, sizeof(double), 1, file);
     }
 
     // Create the KD-Tree
@@ -305,35 +297,4 @@ float dot_product(Vector vec1, Vector vec2) {
         result += vec1.data[i] * vec2.data[i];
     }
     return result;
-}
-
-/**
- * @brief Calculates the median of a vector.
- * 
- * @param data Array of double values.
- * @param dimension Number of elements in the array.
- * @return Median value.
- */
-double calculate_median(double* data, size_t dimension) {
-    // Simple test - need to implement kd-tree later
-    if (dimension % 2 == 0) {
-        return (data[dimension / 2 - 1] + data[dimension / 2]) / 2.0;
-    } else {
-        return data[dimension / 2];
-    }
-}
-
-/**
- * @brief Compares two double values for qsort.
- * 
- * @param a Pointer to the first double value.
- * @param b Pointer to the second double value.
- * @return Comparison result: -1 if a < b, 1 if a > b, 0 if a == b.
- */
-int compare(const void* a, const void* b) {
-    double arg1 = *(const double*)a;
-    double arg2 = *(const double*)b;
-    if (arg1 < arg2) return -1;
-    if (arg1 > arg2) return 1;
-    return 0;
 }

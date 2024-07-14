@@ -4,7 +4,6 @@
 #include <math.h>
 
 #include "cjson/cJSON.h"
-
 #include "../include/compare_handler.h"
 #include "../include/vector_database.h"
 
@@ -336,51 +335,18 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
         vec.data[i] = item->valuedouble;
     }
 
-    // Calculate and store the median point of the vector
-    vec.median_point = calculate_median(vec.data, vec.dimension);
-
-    // Retrieve the 'number' query parameter
-    const char* number_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "number");
-    size_t number = (number_str != NULL) ? (size_t)atoi(number_str) : 1;
-
-    // Allocate memory for distances and indices
-    double* distances = (double*)malloc(db->size * sizeof(double));
-    size_t* indices = (size_t*)malloc(db->size * sizeof(size_t));
-    size_t valid_count = 0;
-
-    // Calculate the distances to the median point
-    for (size_t i = 0; i < db->size; ++i) {
-        if (db->vectors[i].dimension == vec.dimension) {
-            distances[valid_count] = fabs(db->vectors[i].median_point - vec.median_point);
-            indices[valid_count] = i;
-            valid_count++;
-        }
-    }
-
-    // Sort distances and corresponding indices
-    for (size_t i = 0; i < valid_count - 1; ++i) {
-        for (size_t j = 0; j < valid_count - i - 1; ++j) {
-            if (distances[j] > distances[j + 1]) {
-                double temp_distance = distances[j];
-                distances[j] = distances[j + 1];
-                distances[j + 1] = temp_distance;
-
-                size_t temp_index = indices[j];
-                indices[j] = indices[j + 1];
-                indices[j + 1] = temp_index;
-            }
-        }
-    }
+    // Use KD-Tree to find the nearest neighbor
+    size_t nearest_index = kdtree_nearest(db->kdtree, vec.data);
 
     // Create the JSON response
-    cJSON* json_response = cJSON_CreateArray();
-    for (size_t i = 0; i < number && i < valid_count; ++i) {
-        cJSON* vector_obj = cJSON_CreateObject();
-        cJSON_AddNumberToObject(vector_obj, "index", indices[i]);
-        cJSON* vector_array = cJSON_CreateDoubleArray(db->vectors[indices[i]].data, db->vectors[indices[i]].dimension);
-        cJSON_AddItemToObject(vector_obj, "vector", vector_array);
-        cJSON_AddNumberToObject(vector_obj, "median_point", db->vectors[indices[i]].median_point);
-        cJSON_AddItemToArray(json_response, vector_obj);
+    cJSON* json_response = cJSON_CreateObject();
+    if (nearest_index != (size_t)-1) {
+        Vector* nearest_vector = vector_db_read(db, nearest_index);
+        cJSON* vector_array = cJSON_CreateDoubleArray(nearest_vector->data, nearest_vector->dimension);
+        cJSON_AddNumberToObject(json_response, "index", nearest_index);
+        cJSON_AddItemToObject(json_response, "vector", vector_array);
+    } else {
+        cJSON_AddStringToObject(json_response, "error", "No nearest neighbor found");
     }
 
     // Convert the JSON response to a string
@@ -388,8 +354,6 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
     cJSON_Delete(json_response);
 
     // Free allocated memory
-    free(distances);
-    free(indices);
     free(vec.data);
     free(con_data->data);
     free(con_data);

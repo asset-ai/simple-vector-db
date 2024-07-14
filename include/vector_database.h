@@ -6,12 +6,11 @@
 
 /**
  * @struct Vector
- * @brief Represents a vector with its data and associated median point.
+ * @brief Represents a vector with its data.
  */
 typedef struct {
     size_t dimension;      /**< Dimension of the vector */
     double* data;          /**< Array of vector data */
-    double median_point;   /**< Median point of the vector */
 } Vector;
 
 /**
@@ -119,14 +118,5 @@ float euclidean_distance(Vector vec1, Vector vec2);
  * @return Dot product value.
  */
 float dot_product(Vector vec1, Vector vec2);
-
-/**
- * @brief Calculates the median of a vector.
- * 
- * @param data Array of double values.
- * @param dimension Number of elements in the array.
- * @return Median value.
- */
-double calculate_median(double* data, size_t dimension);
 
 #endif // VECTOR_DATABASE_H

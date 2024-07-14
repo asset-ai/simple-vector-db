@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
                     printf(", ");
                 }
             }
-            printf("), Median Point: %f\n", vec->median_point);
+            printf(")\n");
         } else {
             printf("Failed to read vector at index %zu\n", i);
         }

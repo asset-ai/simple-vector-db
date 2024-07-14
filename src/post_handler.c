@@ -9,8 +9,8 @@
 
 // Structure to hold connection data
 typedef struct {
-    char *data;
-    size_t data_size;
+    char *data;       /**< Pointer to the data buffer */
+    size_t data_size; /**< Size of the data buffer */
 } ConnectionData;
 
 /**
@@ -180,9 +180,6 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         vec.data[i] = item->valuedouble;
     }
 
-    // Calculate and store the median point of the vector
-    vec.median_point = calculate_median(vec.data, vec.dimension);
-
     // Insert the vector into the database
     size_t index = vector_db_insert(db, vec);
     if (index == (size_t)-1) {
@@ -211,7 +208,6 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     cJSON_AddNumberToObject(response_json, "index", index);
     cJSON *vector_array = cJSON_CreateDoubleArray(vec.data, vec.dimension);
     cJSON_AddItemToObject(response_json, "vector", vector_array);
-    cJSON_AddNumberToObject(response_json, "median_point", vec.median_point);
     char *response_str = cJSON_PrintUnformatted(response_json);
     cJSON_Delete(response_json);
 

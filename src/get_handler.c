@@ -154,7 +154,6 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
     // Add vector details to the JSON response
     cJSON_AddNumberToObject(json_response, "index", index);
     cJSON_AddItemToObject(json_response, "vector", json_array);
-    cJSON_AddNumberToObject(json_response, "median_point", vec->median_point);
 
     // Convert JSON object to string
     char* response_str = cJSON_PrintUnformatted(json_response);
