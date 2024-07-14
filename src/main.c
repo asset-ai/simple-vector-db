@@ -1,3 +1,8 @@
+/**
+ * @file main.c
+ * @brief Main file for the vector database server.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,15 +16,15 @@
 #include "delete_handler.h"
 #include "compare_handler.h"
 
-#define DEFAULT_PORT 8888
-#define DB_FILENAME "vector_database.db"
-#define DEFAULT_DIMENSION 3  // Example default dimension
+#define DEFAULT_PORT 8888              /**< Default port for the server */
+#define DB_FILENAME "vector_database.db" /**< Database filename */
+#define DEFAULT_DIMENSION 3            /**< Default dimension for vectors */
 
 /**
  * @brief Structure to hold connection-specific data.
  */
 typedef struct {
-    char *data;     /**< Data buffer */
+    char *data;      /**< Data buffer */
     size_t data_size; /**< Size of the data buffer */
 } ConnectionData;
 
@@ -171,7 +176,8 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
                                       const char *url, const char *method,
                                       const char *version, const char *upload_data,
                                       size_t *upload_data_size, void **con_cls) {
-    VectorDatabase* db = (VectorDatabase*)cls;
+    struct PostHandlerData* handler_data = (struct PostHandlerData*)cls;
+    VectorDatabase* db = handler_data->db;
     // Handle GET requests
     if (strcmp(method, "GET") == 0) {
         if (strcmp(url, "/vector") == 0) {
@@ -183,7 +189,7 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
     // Handle POST requests
     else if (strcmp(method, "POST") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_post(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_post(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/nearest") == 0) {
             return ahc_nearest(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
@@ -264,6 +270,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    struct PostHandlerData handler_data;
+    handler_data.db = db;
+
     // Test initialization and reading of vectors
     for (size_t i = 0; i < db->size; i++) {
         Vector *vec = vector_db_read(db, i);
@@ -285,7 +294,7 @@ int main(int argc, char* argv[]) {
 
     // Start the HTTP daemon
     daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
-                              &access_handler, db,
+                              &access_handler, &handler_data,
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed_callback, NULL,
                               MHD_OPTION_END);
     if (!daemon) {

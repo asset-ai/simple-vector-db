@@ -1,3 +1,8 @@
+/**
+ * @file vector_database.c
+ * @brief Implementation of vector database functions.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -38,6 +43,7 @@ VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     } else {
         printf("KDTree initialized\n");
     }
+    printf("Database initialized with capacity: %zu\n", db->capacity);
     return db;
 }
 
@@ -48,13 +54,10 @@ VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
  */
 void vector_db_free(VectorDatabase* db) {
     if (db) {
-        // Free memory for each vector's data
         for (size_t i = 0; i < db->size; ++i) {
             free(db->vectors[i].data);
         }
-        // Free the KD-Tree
         kdtree_free(db->kdtree);
-        // Free the vector array and the VectorDatabase structure
         free(db->vectors);
         free(db);
     }
@@ -68,14 +71,23 @@ void vector_db_free(VectorDatabase* db) {
  * @return Index of the inserted vector or -1 on failure.
  */
 size_t vector_db_insert(VectorDatabase* db, Vector vec) {
+    printf("Inserting vector, current size: %zu, current capacity: %zu\n", db->size, db->capacity);
     if (db->size >= db->capacity) {
-        db->capacity *= 2;
-        Vector* new_vectors = (Vector*)realloc(db->vectors, db->capacity * sizeof(Vector));
+        size_t new_capacity = db->capacity > SIZE_MAX / 2 ? SIZE_MAX : db->capacity * 2;
+        printf("Current capacity: %zu\n", db->capacity);
+        printf("Requested new capacity: %zu\n", new_capacity);
+        printf("Maximum size_t value: %zu\n", SIZE_MAX);
+        if (new_capacity <= db->capacity || new_capacity > SIZE_MAX / sizeof(Vector)) {
+            fprintf(stderr, "Capacity overflow detected, unable to allocate more memory for vectors\n");
+            return (size_t)-1;
+        }
+        Vector* new_vectors = (Vector*)realloc(db->vectors, new_capacity * sizeof(Vector));
         if (!new_vectors) {
             fprintf(stderr, "Failed to allocate more memory for vectors\n");
             return (size_t)-1;
         }
         db->vectors = new_vectors;
+        db->capacity = new_capacity;
     }
     if (!db->kdtree) {
         fprintf(stderr, "KDTree is NULL before inserting\n");
@@ -83,7 +95,6 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     }
     db->vectors[db->size] = vec;
     kdtree_insert(db->kdtree, vec.data, db->size);
-    printf("Inserted vector at index %zu with dimension %zu\n", db->size, vec.dimension);
     return db->size++;
 }
 
@@ -110,10 +121,8 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
  */
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
     if (index < db->size) {
-        // Free the old vector data
         free(db->vectors[index].data);
         db->vectors[index] = vec;
-        // Insert the updated vector into the KD-Tree
         kdtree_insert(db->kdtree, vec.data, index);
     }
 }
@@ -126,9 +135,7 @@ void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
  */
 void vector_db_delete(VectorDatabase* db, size_t index) {
     if (index < db->size) {
-        // Free the vector data
         free(db->vectors[index].data);
-        // Shift the vectors to fill the gap
         for (size_t i = index; i < db->size - 1; ++i) {
             db->vectors[i] = db->vectors[i + 1];
         }
@@ -143,7 +150,6 @@ void vector_db_delete(VectorDatabase* db, size_t index) {
  * @param filename Name of the file to save the database to.
  */
 void vector_db_save(VectorDatabase* db, const char* filename) {
-    // Open the file for writing
     FILE* file = fopen(filename, "wb");
     if (!file) {
         perror("Failed to open file for writing");
@@ -151,9 +157,7 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
     }
 
     printf("Saving database of size %zu\n", db->size);
-    // Write the size of the database
     fwrite(&db->size, sizeof(size_t), 1, file);
-    // Write each vector to the file
     for (size_t i = 0; i < db->size; ++i) {
         if (db->vectors[i].dimension == 0 || db->vectors[i].data == NULL) {
             fprintf(stderr, "Invalid vector at index %zu, skipping\n", i);
@@ -218,6 +222,7 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
         kdtree_insert(db->kdtree, db->vectors[i].data, i);
     }
     fclose(file);
+    printf("Database loaded with size: %zu, capacity: %zu\n", db->size, db->capacity);
     return db;
 }
 
@@ -234,13 +239,11 @@ float cosine_similarity(Vector vec1, Vector vec2) {
         return -1.0;
     }
     float dot_product = 0.0, norm_a = 0.0, norm_b = 0.0;
-    // Calculate the dot product and norms
     for (size_t i = 0; i < vec1.dimension; i++) {
         dot_product += vec1.data[i] * vec2.data[i];
         norm_a += vec1.data[i] * vec1.data[i];
         norm_b += vec2.data[i] * vec2.data[i];
     }
-    // Return the cosine similarity
     return dot_product / (sqrt(norm_a) * sqrt(norm_b));
 }
 
@@ -257,12 +260,10 @@ float euclidean_distance(Vector vec1, Vector vec2) {
         return -1.0;
     }
     float sum = 0.0;
-    // Calculate the sum of squared differences
     for (size_t i = 0; i < vec1.dimension; i++) {
         float diff = vec1.data[i] - vec2.data[i];
         sum += diff * diff;
     }
-    // Return the Euclidean distance
     return sqrt(sum);
 }
 
@@ -279,7 +280,6 @@ float dot_product(Vector vec1, Vector vec2) {
         return -1.0;
     }
     float result = 0.0;
-    // Calculate the dot product
     for (size_t i = 0; i < vec1.dimension; i++) {
         result += vec1.data[i] * vec2.data[i];
     }
