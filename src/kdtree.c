@@ -84,6 +84,7 @@ KDTree* kdtree_create(size_t dimension) {
  * @param index Index of the point in the original dataset.
  */
 void kdtree_insert(KDTree *tree, const double *point, size_t index) {
+    if (tree == NULL) return;
     printf("Inserting point into KDTree\n");
     tree->root = kdtree_insert_rec(tree->root, point, index, 0, tree->dimension);
 }
@@ -110,6 +111,7 @@ void kdtree_free_rec(KDTreeNode *node) {
 void kdtree_free(KDTree *tree) {
     if (tree) {
         kdtree_free_rec(tree->root);
+        tree->root = NULL; // Avoid dangling pointer
         free(tree);
     }
 }
@@ -166,6 +168,9 @@ KDTreeNode* kdtree_nearest_rec(KDTreeNode *node, const double *point, size_t dep
  * @return Index of the nearest neighbor.
  */
 size_t kdtree_nearest(KDTree *tree, const double *point) {
+    if (tree == NULL || tree->root == NULL) {
+        return (size_t)-1;
+    }
     double best_dist = INFINITY;
     KDTreeNode *best_node = kdtree_nearest_rec(tree->root, point, 0, tree->dimension, NULL, &best_dist);
     return best_node ? best_node->index : (size_t)-1;
