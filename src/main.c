@@ -2,15 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <microhttpd.h>
 
-#include "../include/vector_database.h"
-#include "../include/get_handler.h"
-#include "../include/post_handler.h"
-#include "../include/put_handler.h"
-#include "../include/delete_handler.h"
-#include "../include/compare_handler.h"
+#include "vector_database.h"
+#include "get_handler.h"
+#include "post_handler.h"
+#include "put_handler.h"
+#include "delete_handler.h"
+#include "compare_handler.h"
 
 #define DEFAULT_PORT 8888
 #define DB_FILENAME "vector_database.db"
@@ -20,65 +19,158 @@
  * @brief Structure to hold connection-specific data.
  */
 typedef struct {
-    char *data;      /**< Pointer to data buffer */
+    char *data;     /**< Data buffer */
     size_t data_size; /**< Size of the data buffer */
 } ConnectionData;
 
 /**
  * @brief Callback function to clean up request-specific data.
  * 
- * @param cls User-defined data (unused).
- * @param connection Pointer to MHD_Connection object.
- * @param con_cls Pointer to connection-specific data.
- * @param toe Termination code indicating why the connection was terminated.
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param con_cls Connection-specific data.
+ * @param toe Termination code.
  */
 static void request_completed_callback(void* cls, struct MHD_Connection* connection,
                                        void** con_cls, enum MHD_RequestTerminationCode toe);
 
 /**
- * @brief Function prototypes for handling different HTTP methods.
+ * @brief Function to handle GET requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
  */
 static enum MHD_Result ahc_get(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
-                               size_t *upload_data_size, void **con_cls);
+                               size_t *upload_data_size, void **con_cls) {
+    struct GetHandlerData* handler_data = (struct GetHandlerData*)cls;
+    return get_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
+/**
+ * @brief Function to handle POST requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_post(void *cls, struct MHD_Connection *connection,
                                 const char *url, const char *method,
                                 const char *version, const char *upload_data,
-                                size_t *upload_data_size, void **con_cls);
+                                size_t *upload_data_size, void **con_cls) {
+    struct PostHandlerData* handler_data = (struct PostHandlerData*)cls;
+    return post_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
+/**
+ * @brief Function to handle PUT requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_put(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
-                               size_t *upload_data_size, void **con_cls);
+                               size_t *upload_data_size, void **con_cls) {
+    struct PutHandlerData* handler_data = (struct PutHandlerData*)cls;
+    return put_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
+/**
+ * @brief Function to handle DELETE requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection *connection,
                                   const char *url, const char *method,
                                   const char *version, const char *upload_data,
-                                  size_t *upload_data_size, void **con_cls);
+                                  size_t *upload_data_size, void **con_cls) {
+    struct DeleteHandlerData* handler_data = (struct DeleteHandlerData*)cls;
+    return delete_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
+/**
+ * @brief Function to handle comparison requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
-                                   size_t *upload_data_size, void **con_cls);
+                                   size_t *upload_data_size, void **con_cls) {
+    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
+    return compare_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
+/**
+ * @brief Function to handle nearest neighbor requests.
+ * 
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param url URL of the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_nearest(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
-                                   size_t *upload_data_size, void **con_cls);
+                                   size_t *upload_data_size, void **con_cls) {
+    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
+    return nearest_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+}
 
 /**
  * @brief Main access handler function to route requests to appropriate handlers.
  * 
- * @param cls User-defined data (handler data).
- * @param connection Pointer to MHD_Connection object.
+ * @param cls User-defined data.
+ * @param connection Connection handle.
  * @param url URL of the request.
- * @param method HTTP method of the request.
- * @param version HTTP version of the request.
- * @param upload_data Data being uploaded in the request.
+ * @param method HTTP method.
+ * @param version HTTP version.
+ * @param upload_data Data being uploaded.
  * @param upload_data_size Size of the upload data.
- * @param con_cls Pointer to connection-specific data.
+ * @param con_cls Connection-specific data.
  * @return MHD_Result indicating the success or failure of the operation.
  */
 static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connection,
@@ -122,10 +214,10 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
 /**
  * @brief Callback function to clean up request-specific data.
  * 
- * @param cls User-defined data (unused).
- * @param connection Pointer to MHD_Connection object.
- * @param con_cls Pointer to connection-specific data.
- * @param toe Termination code indicating why the connection was terminated.
+ * @param cls User-defined data.
+ * @param connection Connection handle.
+ * @param con_cls Connection-specific data.
+ * @param toe Termination code.
  */
 static void request_completed_callback(void* cls, struct MHD_Connection* connection,
                                        void** con_cls, enum MHD_RequestTerminationCode toe) {
@@ -138,11 +230,11 @@ static void request_completed_callback(void* cls, struct MHD_Connection* connect
 }
 
 /**
- * @brief Main function to start the HTTP server and handle vector database operations.
+ * @brief Main function to initialize and start the HTTP server.
  * 
- * @param argc Number of command-line arguments.
- * @param argv Array of command-line arguments.
- * @return int 0 on success, 1 on failure.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return int Exit status.
  */
 int main(int argc, char* argv[]) {
     int port = DEFAULT_PORT;
