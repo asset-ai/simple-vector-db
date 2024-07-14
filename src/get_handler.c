@@ -1,8 +1,8 @@
-#include <microhttpd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <microhttpd.h>
 #include "cjson/cJSON.h"
 
 #include "vector_database.h"
