@@ -4,54 +4,54 @@
 #include <stddef.h>
 
 /**
- * @brief Structure representing a node in the KDTree.
+ * @brief Structure representing a KD-tree node.
  */
-typedef struct KDNode {
-    double* point;          /**< Pointer to the coordinates of the point */
-    size_t index;           /**< Index of the point */
-    struct KDNode* left;    /**< Pointer to the left child node */
-    struct KDNode* right;   /**< Pointer to the right child node */
-} KDNode;
+typedef struct KDTreeNode {
+    double *point; /**< Point in the k-dimensional space */
+    size_t index; /**< Index of the point in the original dataset */
+    struct KDTreeNode *left; /**< Left child node */
+    struct KDTreeNode *right; /**< Right child node */
+} KDTreeNode;
 
 /**
- * @brief Structure representing the KDTree.
+ * @brief Structure representing a KD-tree.
  */
 typedef struct KDTree {
-    KDNode* root;           /**< Pointer to the root node of the tree */
-    size_t dimension;       /**< Dimensionality of the KDTree */
+    KDTreeNode *root; /**< Root node of the KD-tree */
+    size_t dimension; /**< Dimensionality of the points */
 } KDTree;
 
 /**
- * @brief Creates a KDTree with the specified dimensionality.
+ * @brief Create a new KD-tree.
  * 
- * @param dimension The dimensionality of the KDTree.
- * @return Pointer to the created KDTree.
+ * @param dimension Dimensionality of the points.
+ * @return Pointer to the newly created KD-tree.
  */
 KDTree* kdtree_create(size_t dimension);
 
 /**
- * @brief Inserts a point into the KDTree.
+ * @brief Insert a point into the KD-tree.
  * 
- * @param tree Pointer to the KDTree.
- * @param point Pointer to the coordinates of the point to insert.
- * @param index Index of the point.
+ * @param tree KD-tree into which the point is to be inserted.
+ * @param point Point to be inserted.
+ * @param index Index of the point in the original dataset.
  */
-void kdtree_insert(KDTree* tree, double* point, size_t index);
+void kdtree_insert(KDTree* tree, const double* point, size_t index);
 
 /**
- * @brief Finds the index of the nearest neighbor to a given point in the KDTree.
+ * @brief Free the memory allocated for the KD-tree.
  * 
- * @param tree Pointer to the KDTree.
- * @param point Pointer to the coordinates of the query point.
- * @return Index of the nearest neighbor point.
- */
-size_t kdtree_nearest(KDTree* tree, double* point);
-
-/**
- * @brief Frees the memory allocated for the KDTree.
- * 
- * @param tree Pointer to the KDTree to free.
+ * @param tree KD-tree to be freed.
  */
 void kdtree_free(KDTree* tree);
+
+/**
+ * @brief Find the nearest neighbor in the KD-tree.
+ * 
+ * @param tree KD-tree to search in.
+ * @param point Point to find the nearest neighbor for.
+ * @return Index of the nearest neighbor.
+ */
+size_t kdtree_nearest(KDTree *tree, const double *point);
 
 #endif // KDTREE_H

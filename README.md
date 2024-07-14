@@ -228,7 +228,7 @@ curl "http://localhost:8888/compare/dot_product?index1=0&index2=1"
 
 
 ```sh
-curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39]' "http://localhost:8888/nearest"
+curl -X POST -H "Content-Type: application/json" -d '[6.959,2.35362,5.847699,6.579056,5.005,7.01,1.850506,9.01822,2.74,5.7574,9.57779,1,6.6226,4.05,2,1.645,8,1,2.88743,2.8]' "http://localhost:8888/nearest"
 ```
 
 **Response**:

@@ -30,9 +30,9 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
                                             size_t* upload_data_size, void** con_cls);
 
 // Structure to hold data for the POST handler
-typedef struct {
+struct PostHandlerData {
     VectorDatabase* db;
-} PostHandlerData;
+};
 
 /**
  * @brief Function to handle POST requests.
@@ -68,7 +68,7 @@ enum MHD_Result post_handler(void* cls, struct MHD_Connection* connection,
     }
 
     // Retrieve the handler data
-    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    struct PostHandlerData* handler_data = (struct PostHandlerData*)cls;
     printf("post_handler: Retrieved handler_data\n");
     return post_handler_callback(handler_data->db, connection, url, method, version,
                                  upload_data, upload_data_size, con_cls);
@@ -92,7 +92,6 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
                                             const char* version, const char* upload_data,
                                             size_t* upload_data_size, void** con_cls) {
     printf("post_handler_callback: Entered\n");
-    printf("post_handler_callback: VectorDatabase size: %zu, capacity: %zu\n", ((VectorDatabase*)cls)->size, ((VectorDatabase*)cls)->capacity); // Debug
 
     ConnectionData *con_data = (ConnectionData *)*con_cls;
     VectorDatabase* db = (VectorDatabase*)cls;
@@ -199,6 +198,7 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         int ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
         MHD_destroy_response(response);
         cJSON_Delete(json);
+        free(con_data->data);
         printf("post_handler_callback: Freeing con_data->data\n");
         free(con_data->data);
         printf("post_handler_callback: Freeing con_data\n");
@@ -345,6 +345,6 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
-    free(vec.data);
+    free(vec.data);  // Free the vector data after the response has been sent
     return ret == MHD_YES ? MHD_YES : MHD_NO;
 }

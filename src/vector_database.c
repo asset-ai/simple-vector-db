@@ -1,23 +1,10 @@
-/**
- * @file vector_database.c
- * @brief Implementation of vector database functions.
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-
 #include "../include/vector_database.h"
 #include "../include/kdtree.h"
 
-/**
- * @brief Initializes the vector database.
- * 
- * @param initial_capacity Initial capacity of the vector array.
- * @param dimension Dimension of the vectors and KD-Tree.
- * @return Pointer to the initialized VectorDatabase structure.
- */
 VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
@@ -47,11 +34,6 @@ VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     return db;
 }
 
-/**
- * @brief Frees the memory allocated for the vector database.
- * 
- * @param db Pointer to the VectorDatabase structure to be freed.
- */
 void vector_db_free(VectorDatabase* db) {
     if (db) {
         for (size_t i = 0; i < db->size; ++i) {
@@ -63,13 +45,6 @@ void vector_db_free(VectorDatabase* db) {
     }
 }
 
-/**
- * @brief Inserts a vector into the database.
- * 
- * @param db Pointer to the VectorDatabase structure.
- * @param vec Vector to be inserted.
- * @return Index of the inserted vector or -1 on failure.
- */
 size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     printf("Inserting vector, current size: %zu, current capacity: %zu\n", db->size, db->capacity);
     if (db->size >= db->capacity) {
@@ -98,13 +73,6 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     return db->size++;
 }
 
-/**
- * @brief Reads a vector from the database.
- * 
- * @param db Pointer to the VectorDatabase structure.
- * @param index Index of the vector to be read.
- * @return Pointer to the vector at the specified index or NULL if the index is out of bounds.
- */
 Vector* vector_db_read(VectorDatabase* db, size_t index) {
     if (index < db->size) {
         return &db->vectors[index];
@@ -112,13 +80,6 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
     return NULL;
 }
 
-/**
- * @brief Updates a vector in the database.
- * 
- * @param db Pointer to the VectorDatabase structure.
- * @param index Index of the vector to be updated.
- * @param vec New vector data.
- */
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
     if (index < db->size) {
         free(db->vectors[index].data);
@@ -127,12 +88,6 @@ void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
     }
 }
 
-/**
- * @brief Deletes a vector from the database.
- * 
- * @param db Pointer to the VectorDatabase structure.
- * @param index Index of the vector to be deleted.
- */
 void vector_db_delete(VectorDatabase* db, size_t index) {
     if (index < db->size) {
         free(db->vectors[index].data);
@@ -143,12 +98,6 @@ void vector_db_delete(VectorDatabase* db, size_t index) {
     }
 }
 
-/**
- * @brief Saves the database to a file.
- * 
- * @param db Pointer to the VectorDatabase structure.
- * @param filename Name of the file to save the database to.
- */
 void vector_db_save(VectorDatabase* db, const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (!file) {
@@ -172,13 +121,6 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
     printf("Database saved to %s\n", filename);
 }
 
-/**
- * @brief Loads the database from a file.
- * 
- * @param filename Name of the file to load the database from.
- * @param dimension Dimension of the vectors and KD-Tree.
- * @return Pointer to the loaded VectorDatabase structure.
- */
 VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
@@ -226,13 +168,6 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
     return db;
 }
 
-/**
- * @brief Calculates the cosine similarity between two vectors.
- * 
- * @param vec1 First vector.
- * @param vec2 Second vector.
- * @return Cosine similarity value.
- */
 float cosine_similarity(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -247,13 +182,6 @@ float cosine_similarity(Vector vec1, Vector vec2) {
     return dot_product / (sqrt(norm_a) * sqrt(norm_b));
 }
 
-/**
- * @brief Calculates the Euclidean distance between two vectors.
- * 
- * @param vec1 First vector.
- * @param vec2 Second vector.
- * @return Euclidean distance value.
- */
 float euclidean_distance(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -267,13 +195,6 @@ float euclidean_distance(Vector vec1, Vector vec2) {
     return sqrt(sum);
 }
 
-/**
- * @brief Calculates the dot product of two vectors.
- * 
- * @param vec1 First vector.
- * @param vec2 Second vector.
- * @return Dot product value.
- */
 float dot_product(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -286,13 +207,6 @@ float dot_product(Vector vec1, Vector vec2) {
     return result;
 }
 
-/**
- * @brief Compares two double values for qsort.
- * 
- * @param a Pointer to the first double value.
- * @param b Pointer to the second double value.
- * @return Comparison result: -1 if a < b, 1 if a > b, 0 if a == b.
- */
 int compare(const void* a, const void* b) {
     double arg1 = *(const double*)a;
     double arg2 = *(const double*)b;

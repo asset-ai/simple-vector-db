@@ -5,7 +5,7 @@
 #include <microhttpd.h>
 #include "cjson/cJSON.h"
 
-#include "vector_database.h"
+#include "../include/vector_database.h"
 
 /**
  * @brief Callback function to handle GET requests.
