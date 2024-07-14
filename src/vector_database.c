@@ -14,29 +14,29 @@
  * @return Pointer to the initialized VectorDatabase structure.
  */
 VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
-    // Allocate memory for the VectorDatabase structure
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
         fprintf(stderr, "Failed to allocate memory for database\n");
         return NULL;
     }
-    // Initialize size and capacity
+
     db->size = 0;
     db->capacity = initial_capacity > 0 ? initial_capacity : 10;
-    // Allocate memory for the vector array
     db->vectors = (Vector*)malloc(db->capacity * sizeof(Vector));
     if (!db->vectors) {
         fprintf(stderr, "Failed to allocate memory for vectors\n");
         free(db);
         return NULL;
     }
-    // Create the KD-Tree
+
     db->kdtree = kdtree_create(dimension);
     if (!db->kdtree) {
         fprintf(stderr, "Failed to create KDTree\n");
         free(db->vectors);
         free(db);
         return NULL;
+    }else{
+         printf("KDTree initialized");
     }
     return db;
 }
@@ -68,21 +68,21 @@ void vector_db_free(VectorDatabase* db) {
  * @return Index of the inserted vector or -1 on failure.
  */
 size_t vector_db_insert(VectorDatabase* db, Vector vec) {
-    // Check if the vector array needs to be resized
     if (db->size >= db->capacity) {
         db->capacity *= 2;
-        // Reallocate memory for the vector array
         Vector* new_vectors = (Vector*)realloc(db->vectors, db->capacity * sizeof(Vector));
         if (!new_vectors) {
             fprintf(stderr, "Failed to allocate more memory for vectors\n");
-            return (size_t)-1; // Return -1 on failure
+            return (size_t)-1;
         }
         db->vectors = new_vectors;
     }
+    if (!db->kdtree) {
+        fprintf(stderr, "KDTree is NULL before inserting\n");
+        return (size_t)-1;
+    }
     db->vectors[db->size] = vec;
-    // Insert the vector into the KD-Tree
     kdtree_insert(db->kdtree, vec.data, db->size);
-    printf("Inserted vector at index %zu with dimension %zu\n", db->size, vec.dimension);
     return db->size++;
 }
 
@@ -175,25 +175,19 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
  * @return Pointer to the loaded VectorDatabase structure.
  */
 VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
-    // Open the file for reading
     FILE* file = fopen(filename, "rb");
     if (!file) {
         perror("Failed to open file for reading");
         return NULL;
     }
-
-    // Allocate memory for the VectorDatabase structure
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
         fprintf(stderr, "Failed to allocate memory for database\n");
         fclose(file);
         return NULL;
     }
-
-    // Read the size of the database
     fread(&db->size, sizeof(size_t), 1, file);
     db->capacity = db->size > 0 ? db->size : 10;
-    // Allocate memory for the vector array
     db->vectors = (Vector*)malloc(db->capacity * sizeof(Vector));
     if (!db->vectors) {
         fprintf(stderr, "Failed to allocate memory for vectors\n");
@@ -201,8 +195,6 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
         fclose(file);
         return NULL;
     }
-
-    // Read each vector from the file
     for (size_t i = 0; i < db->size; ++i) {
         fread(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         db->vectors[i].data = (double*)malloc(db->vectors[i].dimension * sizeof(double));
@@ -214,8 +206,6 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
         }
         fread(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
     }
-
-    // Create the KD-Tree
     db->kdtree = kdtree_create(dimension);
     if (!db->kdtree) {
         fprintf(stderr, "Failed to create KDTree\n");
@@ -223,14 +213,10 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
         fclose(file);
         return NULL;
     }
-
-    // Insert each vector into the KD-Tree
     for (size_t i = 0; i < db->size; ++i) {
         kdtree_insert(db->kdtree, db->vectors[i].data, i);
     }
-
     fclose(file);
-    printf("Database loaded from %s\n", filename);
     return db;
 }
 
@@ -297,4 +283,19 @@ float dot_product(Vector vec1, Vector vec2) {
         result += vec1.data[i] * vec2.data[i];
     }
     return result;
+}
+
+/**
+ * @brief Compares two double values for qsort.
+ * 
+ * @param a Pointer to the first double value.
+ * @param b Pointer to the second double value.
+ * @return Comparison result: -1 if a < b, 1 if a > b, 0 if a == b.
+ */
+int compare(const void* a, const void* b) {
+    double arg1 = *(const double*)a;
+    double arg2 = *(const double*)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
 }

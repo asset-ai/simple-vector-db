@@ -1,115 +1,56 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
-
+#include <stdlib.h>
+#include <float.h>
 #include "../include/kdtree.h"
 
-// Forward declarations of static helper functions
-static KDTreeNode* kdtree_insert_rec(KDTreeNode* node, double* point, size_t index, size_t depth, size_t dimension);
-static void kdtree_destroy_rec(KDTreeNode* node);
-static double distance_squared(double* point1, double* point2, size_t dimension);
-static void kdtree_nearest_rec(KDTreeNode* node, double* target, KDTreeNode** best, double* best_dist, size_t depth, size_t dimension);
-
 /**
- * Initializes a new KDTree structure.
+ * @brief Create a new KDTree node.
  * 
- * @param dimension The dimension of the points to be stored in the KDTree.
- * @return Pointer to the newly created KDTree, or NULL on failure.
+ * @param point Point data for the node.
+ * @param index Index of the point in the original data structure.
+ * @param dimension Dimension of the points.
+ * @return KDNode* Pointer to the created KDNode.
  */
-KDTree* kdtree_create(size_t dimension) {
-    KDTree* tree = (KDTree*)malloc(sizeof(KDTree));
-    if (!tree) {
-        fprintf(stderr, "Failed to allocate memory for KDTree\n");
+KDNode* kdtree_create_node(double* point, size_t index, size_t dimension) {
+    KDNode* node = (KDNode*)malloc(sizeof(KDNode));
+    if (!node) {
+        fprintf(stderr, "kdtree_create_node: Failed to allocate memory for KDNode\n");
         return NULL;
     }
-    tree->root = NULL;
-    tree->dimension = dimension;
-    return tree;
-}
-
-/**
- * Destroys a KDTree, freeing all associated memory.
- * 
- * @param tree Pointer to the KDTree to be destroyed.
- */
-void kdtree_destroy(KDTree* tree) {
-    if (tree) {
-        kdtree_destroy_rec(tree->root);
-        free(tree);
-    }
-}
-
-/**
- * Frees a KDTree, synonym for kdtree_destroy.
- * 
- * @param tree Pointer to the KDTree to be freed.
- */
-void kdtree_free(KDTree* tree) {
-    if (tree) {
-        kdtree_destroy_rec(tree->root);
-        free(tree);
-    }
-}
-
-/**
- * Recursively destroys a KDTreeNode and its children.
- * 
- * @param node Pointer to the KDTreeNode to be destroyed.
- */
-static void kdtree_destroy_rec(KDTreeNode* node) {
-    if (node) {
-        kdtree_destroy_rec(node->left);
-        kdtree_destroy_rec(node->right);
-        free(node->point);
+    node->point = (double*)malloc(dimension * sizeof(double));
+    if (!node->point) {
+        fprintf(stderr, "kdtree_create_node: Failed to allocate memory for node point\n");
         free(node);
+        return NULL;
     }
+    for (size_t i = 0; i < dimension; ++i) {
+        node->point[i] = point[i];
+    }
+    node->index = index;
+    node->left = NULL;
+    node->right = NULL;
+    return node;
 }
 
 /**
- * Inserts a new point into the KDTree.
+ * @brief Insert a point into the KDTree recursively.
  * 
- * @param tree Pointer to the KDTree.
- * @param point Array of doubles representing the point to be inserted.
- * @param index The index of the point in the original data structure.
- */
-void kdtree_insert(KDTree* tree, double* point, size_t index) {
-    tree->root = kdtree_insert_rec(tree->root, point, index, 0, tree->dimension);
-}
-
-/**
- * Recursively inserts a point into the KDTree.
- * 
- * @param node Current KDTreeNode in the recursive insertion.
- * @param point Array of doubles representing the point to be inserted.
- * @param index The index of the point in the original data structure.
+ * @param node Current node in the KDTree.
+ * @param point Point to be inserted.
+ * @param index Index of the point in the original data structure.
  * @param depth Current depth in the KDTree.
- * @param dimension The dimension of the points in the KDTree.
- * @return Pointer to the updated KDTreeNode.
+ * @param dimension Dimension of the points.
+ * @return KDNode* Pointer to the root of the KDTree.
  */
-static KDTreeNode* kdtree_insert_rec(KDTreeNode* node, double* point, size_t index, size_t depth, size_t dimension) {
+KDNode* kdtree_insert_rec(KDNode* node, double* point, size_t index, size_t depth, size_t dimension) {
     if (!node) {
-        KDTreeNode* new_node = (KDTreeNode*)malloc(sizeof(KDTreeNode));
-        if (!new_node) {
-            fprintf(stderr, "Failed to allocate memory for KDTreeNode\n");
-            return NULL;
-        }
-        new_node->point = (double*)malloc(dimension * sizeof(double));
-        if (!new_node->point) {
-            fprintf(stderr, "Failed to allocate memory for point\n");
-            free(new_node);
-            return NULL;
-        }
-        for (size_t i = 0; i < dimension; ++i) {
-            new_node->point[i] = point[i];
-        }
-        new_node->index = index;
-        new_node->left = new_node->right = NULL;
-        return new_node;
+        return kdtree_create_node(point, index, dimension);
     }
 
-    // Determine the axis to compare at this depth
-    size_t axis = depth % dimension;
-    if (point[axis] < node->point[axis]) {
+    size_t cd = depth % dimension;
+
+    // Recur down the tree
+    if (point[cd] < node->point[cd]) {
         node->left = kdtree_insert_rec(node->left, point, index, depth + 1, dimension);
     } else {
         node->right = kdtree_insert_rec(node->right, point, index, depth + 1, dimension);
@@ -119,69 +60,117 @@ static KDTreeNode* kdtree_insert_rec(KDTreeNode* node, double* point, size_t ind
 }
 
 /**
- * Finds the nearest neighbor in the KDTree for a given point.
+ * @brief Create a KDTree with the given dimension.
+ * 
+ * @param dimension Dimension of the points.
+ * @return KDTree* Pointer to the created KDTree.
+ */
+KDTree* kdtree_create(size_t dimension) {
+    KDTree* tree = (KDTree*)malloc(sizeof(KDTree));
+    if (!tree) {
+        fprintf(stderr, "kdtree_create: Failed to allocate memory for KDTree\n");
+        return NULL;
+    }
+    tree->root = NULL;
+    tree->dimension = dimension;
+    return tree;
+}
+
+/**
+ * @brief Insert a point into the KDTree.
  * 
  * @param tree Pointer to the KDTree.
- * @param point Array of doubles representing the point to find the nearest neighbor for.
- * @return The index of the nearest neighbor, or (size_t)-1 if the tree is empty.
+ * @param point Point to be inserted.
+ * @param index Index of the point in the original data structure.
  */
-size_t kdtree_nearest(KDTree* tree, double* point) {
-    KDTreeNode* best = NULL;
-    double best_dist = INFINITY;
-    kdtree_nearest_rec(tree->root, point, &best, &best_dist, 0, tree->dimension);
-    return best ? best->index : (size_t)-1;
-}
-
-/**
- * Recursively searches for the nearest neighbor in the KDTree.
- * 
- * @param node Current KDTreeNode in the recursive search.
- * @param target Array of doubles representing the target point.
- * @param best Pointer to the best KDTreeNode found so far.
- * @param best_dist Pointer to the best distance found so far.
- * @param depth Current depth in the KDTree.
- * @param dimension The dimension of the points in the KDTree.
- */
-static void kdtree_nearest_rec(KDTreeNode* node, double* target, KDTreeNode** best, double* best_dist, size_t depth, size_t dimension) {
-    if (!node) {
+void kdtree_insert(KDTree* tree, double* point, size_t index) {
+    if (!tree) {
+        fprintf(stderr, "kdtree_insert: KDTree is NULL\n");
         return;
     }
+    printf("Inserting point into KDTree\n");
+    tree->root = kdtree_insert_rec(tree->root, point, index, 0, tree->dimension);
+}
 
-    // Calculate the distance from the target to the current node
-    double dist = distance_squared(node->point, target, dimension);
-    if (dist < *best_dist) {
-        *best_dist = dist;
-        *best = node;
+/**
+ * @brief Recursively find the nearest neighbor in the KDTree.
+ * 
+ * @param node Current node in the KDTree.
+ * @param point Target point.
+ * @param depth Current depth in the KDTree.
+ * @param dimension Dimension of the points.
+ * @param best_node Best node found so far.
+ * @param best_dist Best distance found so far.
+ * @return KDNode* Pointer to the nearest neighbor node.
+ */
+KDNode* kdtree_nearest_rec(KDNode* node, double* point, size_t depth, size_t dimension, KDNode* best_node, double* best_dist) {
+    if (!node) {
+        return best_node;
     }
 
-    // Determine the axis to compare at this depth
-    size_t axis = depth % dimension;
-    double diff = target[axis] - node->point[axis];
-    KDTreeNode* near_node = (diff < 0) ? node->left : node->right;
-    KDTreeNode* far_node = (diff < 0) ? node->right : node->left;
+    double d = 0.0;
+    for (size_t i = 0; i < dimension; ++i) {
+        d += (node->point[i] - point[i]) * (node->point[i] - point[i]);
+    }
 
-    // Recursively search the nearer subtree
-    kdtree_nearest_rec(near_node, target, best, best_dist, depth + 1, dimension);
+    if (d < *best_dist) {
+        *best_dist = d;
+        best_node = node;
+    }
 
-    // If necessary, search the farther subtree
-    if (diff * diff < *best_dist) {
-        kdtree_nearest_rec(far_node, target, best, best_dist, depth + 1, dimension);
+    size_t cd = depth % dimension;
+    KDNode* next_node = (point[cd] < node->point[cd]) ? node->left : node->right;
+    KDNode* other_node = (point[cd] < node->point[cd]) ? node->right : node->left;
+
+    best_node = kdtree_nearest_rec(next_node, point, depth + 1, dimension, best_node, best_dist);
+    if ((point[cd] - node->point[cd]) * (point[cd] - node->point[cd]) < *best_dist) {
+        best_node = kdtree_nearest_rec(other_node, point, depth + 1, dimension, best_node, best_dist);
+    }
+
+    return best_node;
+}
+
+/**
+ * @brief Find the nearest neighbor in the KDTree.
+ * 
+ * @param tree Pointer to the KDTree.
+ * @param point Target point.
+ * @return size_t Index of the nearest neighbor.
+ */
+size_t kdtree_nearest(KDTree* tree, double* point) {
+    if (!tree || !tree->root) {
+        fprintf(stderr, "kdtree_nearest: KDTree is NULL or empty\n");
+        return (size_t)-1;
+    }
+
+    double best_dist = DBL_MAX;
+    KDNode* best_node = kdtree_nearest_rec(tree->root, point, 0, tree->dimension, NULL, &best_dist);
+
+    return best_node ? best_node->index : (size_t)-1;
+}
+
+/**
+ * @brief Free the memory allocated for a KDTree node.
+ * 
+ * @param node Pointer to the KDTree node to be freed.
+ */
+void kdtree_free_node(KDNode* node) {
+    if (node) {
+        free(node->point);
+        kdtree_free_node(node->left);
+        kdtree_free_node(node->right);
+        free(node);
     }
 }
 
 /**
- * Calculates the squared Euclidean distance between two points.
+ * @brief Free the memory allocated for the KDTree.
  * 
- * @param point1 Array of doubles representing the first point.
- * @param point2 Array of doubles representing the second point.
- * @param dimension The dimension of the points.
- * @return The squared Euclidean distance between the two points.
+ * @param tree Pointer to the KDTree to be freed.
  */
-static double distance_squared(double* point1, double* point2, size_t dimension) {
-    double dist = 0;
-    for (size_t i = 0; i < dimension; ++i) {
-        double diff = point1[i] - point2[i];
-        dist += diff * diff;
+void kdtree_free(KDTree* tree) {
+    if (tree) {
+        kdtree_free_node(tree->root);
+        free(tree);
     }
-    return dist;
 }

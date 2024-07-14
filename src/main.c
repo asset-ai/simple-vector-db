@@ -51,8 +51,7 @@ static enum MHD_Result ahc_get(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
                                size_t *upload_data_size, void **con_cls) {
-    struct GetHandlerData* handler_data = (struct GetHandlerData*)cls;
-    return get_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return get_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -72,8 +71,7 @@ static enum MHD_Result ahc_post(void *cls, struct MHD_Connection *connection,
                                 const char *url, const char *method,
                                 const char *version, const char *upload_data,
                                 size_t *upload_data_size, void **con_cls) {
-    struct PostHandlerData* handler_data = (struct PostHandlerData*)cls;
-    return post_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return post_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -93,8 +91,7 @@ static enum MHD_Result ahc_put(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
                                size_t *upload_data_size, void **con_cls) {
-    struct PutHandlerData* handler_data = (struct PutHandlerData*)cls;
-    return put_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return put_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -114,8 +111,7 @@ static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection *connection,
                                   const char *url, const char *method,
                                   const char *version, const char *upload_data,
                                   size_t *upload_data_size, void **con_cls) {
-    struct DeleteHandlerData* handler_data = (struct DeleteHandlerData*)cls;
-    return delete_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return delete_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -135,8 +131,7 @@ static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
                                    size_t *upload_data_size, void **con_cls) {
-    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
-    return compare_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return compare_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -156,8 +151,7 @@ static enum MHD_Result ahc_nearest(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
                                    size_t *upload_data_size, void **con_cls) {
-    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
-    return nearest_handler(handler_data->db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+    return nearest_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
 /**
@@ -177,29 +171,30 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
                                       const char *url, const char *method,
                                       const char *version, const char *upload_data,
                                       size_t *upload_data_size, void **con_cls) {
+    VectorDatabase* db = (VectorDatabase*)cls;
     // Handle GET requests
     if (strcmp(method, "GET") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_get(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_get(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/compare/cosine_similarity") == 0 || strcmp(url, "/compare/euclidean_distance") == 0 || strcmp(url, "/compare/dot_product") == 0) {
-            return ahc_compare(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_compare(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle POST requests
     else if (strcmp(method, "POST") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_post(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_post(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/nearest") == 0) {
-            return ahc_nearest(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_nearest(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle PUT requests
     else if (strcmp(method, "PUT") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_put(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_put(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
     // Handle DELETE requests
     else if (strcmp(method, "DELETE") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_delete(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_delete(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
 
     // Return 404 Not Found for unrecognized URLs
@@ -288,12 +283,9 @@ int main(int argc, char* argv[]) {
 
     struct MHD_Daemon *daemon;
 
-    // Pass the database through the handler data structure
-    struct CompareHandlerData handler_data = { db };
-
     // Start the HTTP daemon
     daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
-                              &access_handler, &handler_data,
+                              &access_handler, db,
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed_callback, NULL,
                               MHD_OPTION_END);
     if (!daemon) {
