@@ -35,8 +35,8 @@ VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
         free(db->vectors);
         free(db);
         return NULL;
-    }else{
-         printf("KDTree initialized");
+    } else {
+        printf("KDTree initialized\n");
     }
     return db;
 }
@@ -83,6 +83,7 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     }
     db->vectors[db->size] = vec;
     kdtree_insert(db->kdtree, vec.data, db->size);
+    printf("Inserted vector at index %zu with dimension %zu\n", db->size, vec.dimension);
     return db->size++;
 }
 

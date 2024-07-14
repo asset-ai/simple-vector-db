@@ -107,6 +107,9 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         char *new_data = (char *)realloc(con_data->data, con_data->data_size + *upload_data_size + 1);
         if (new_data == NULL) {
             fprintf(stderr, "post_handler_callback: Failed to reallocate memory for data\n");
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
             return MHD_NO;
         }
         con_data->data = new_data;
@@ -124,6 +127,13 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         const char* error_msg = "{\"error\": \"Empty data\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "post_handler_callback: Failed to create response\n");
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
         int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
         MHD_destroy_response(response);
@@ -144,6 +154,13 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         const char* error_msg = "{\"error\": \"Invalid JSON\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "post_handler_callback: Failed to create response\n");
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
         int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
         MHD_destroy_response(response);
@@ -169,6 +186,14 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         const char* error_msg = "{\"error\": \"Memory allocation failed\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "post_handler_callback: Failed to create response\n");
+            cJSON_Delete(json);
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
         int ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
         MHD_destroy_response(response);
@@ -189,6 +214,15 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
             const char* error_msg = "{\"error\": \"Invalid vector data\"}";
             struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                             (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+            if (response == NULL) {
+                fprintf(stderr, "post_handler_callback: Failed to create response\n");
+                cJSON_Delete(json);
+                free(vec.data);
+                free(con_data->data);
+                free(con_data);
+                *con_cls = NULL;
+                return MHD_NO;
+            }
             MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
             int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
             MHD_destroy_response(response);
@@ -219,8 +253,18 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
             const char* error_msg = "{\"error\": \"Failed to initialize KDTree\"}";
             struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                             (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+            if (response == NULL) {
+                fprintf(stderr, "post_handler_callback: Failed to create response\n");
+                cJSON_Delete(json);
+                free(vec.data);
+                free(con_data->data);
+                free(con_data);
+                *con_cls = NULL;
+                return MHD_NO;
+            }
             MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
             int ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
+            MHD_destroy_response(response);
             cJSON_Delete(json);
             free(vec.data);
             printf("post_handler_callback: Freeing con_data->data\n");
@@ -240,8 +284,18 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
         const char* error_msg = "{\"error\": \"Failed to insert vector\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "post_handler_callback: Failed to create response\n");
+            cJSON_Delete(json);
+            free(vec.data);
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
         int ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
+        MHD_destroy_response(response);
         cJSON_Delete(json);
         free(vec.data);
         printf("post_handler_callback: Freeing con_data->data\n");
@@ -255,12 +309,20 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     printf("post_handler_callback: Vector inserted at index %zu\n", index);
 
     // Clean up JSON data and connection data
-    cJSON_Delete(json);
+    if (json) {
+        printf("post_handler_callback: Deleting JSON\n");
+        cJSON_Delete(json);
+    }
     printf("post_handler_callback: JSON deleted\n");
-    printf("post_handler_callback: Freeing con_data->data\n");
-    free(con_data->data);
-    printf("post_handler_callback: Freeing con_data\n");
-    free(con_data);
+
+    if (con_data && con_data->data) {
+        printf("post_handler_callback: Freeing con_data->data\n");
+        free(con_data->data);
+    }
+    if (con_data) {
+        printf("post_handler_callback: Freeing con_data\n");
+        free(con_data);
+    }
     *con_cls = NULL;
 
     // Prepare JSON response
@@ -274,8 +336,14 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     // Create and send the HTTP response
     struct MHD_Response* response = MHD_create_response_from_buffer(strlen(response_str),
                                                                     (void*)response_str, MHD_RESPMEM_MUST_FREE);
+    if (response == NULL) {
+        fprintf(stderr, "post_handler_callback: Failed to create response\n");
+        free(vec.data);
+        return MHD_NO;
+    }
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
+    free(vec.data);  // Free the vector data after the response has been sent
     return ret == MHD_YES ? MHD_YES : MHD_NO;
 }
