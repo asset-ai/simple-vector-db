@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "vector_database.h": "c",
+        "kdtree.h": "c"
+    }
+}

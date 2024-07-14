@@ -14,6 +14,7 @@
 
 #define DEFAULT_PORT 8888
 #define DB_FILENAME "vector_database.db"
+#define DEFAULT_DIMENSION 3  // Example default dimension
 
 // Define the ConnectionData structure
 typedef struct {
@@ -115,16 +116,20 @@ static void request_completed_callback(void* cls, struct MHD_Connection* connect
 
 int main(int argc, char* argv[]) {
     int port = DEFAULT_PORT;
+    size_t dimension = DEFAULT_DIMENSION;
 
-    // Parse command-line arguments for port
+    // Parse command-line arguments for port and dimension
     int opt;
-    while ((opt = getopt(argc, argv, "p:")) != -1) {
+    while ((opt = getopt(argc, argv, "p:d:")) != -1) {
         switch (opt) {
             case 'p':
                 port = atoi(optarg);
                 break;
+            case 'd':
+                dimension = (size_t)atoi(optarg);
+                break;
             default:
-                fprintf(stderr, "Usage: %s [-p port]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-p port] [-d dimension]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
@@ -132,10 +137,10 @@ int main(int argc, char* argv[]) {
     VectorDatabase *db;
 
     // Load the database from file if it exists
-    db = vector_db_load(DB_FILENAME);
+    db = vector_db_load(DB_FILENAME, dimension);
     if (db == NULL) {
         // If loading failed, initialize a new database
-        db = vector_db_init(0); // Passing 0 to initialize an empty database
+        db = vector_db_init(0, dimension); // Passing 0 to initialize an empty database
         if (!db) {
             fprintf(stderr, "Failed to initialize vector database\n");
             return 1;
@@ -158,7 +163,6 @@ int main(int argc, char* argv[]) {
             printf("Failed to read vector at index %zu\n", i);
         }
     }
-
 
     struct MHD_Daemon *daemon;
 

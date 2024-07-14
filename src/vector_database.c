@@ -3,9 +3,10 @@
 #include <string.h>
 #include <math.h>
 
-#include "vector_database.h"
+#include "../include/vector_database.h"
+#include "../include/kdtree.h"
 
-VectorDatabase* vector_db_init(size_t initial_capacity) {
+VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
         fprintf(stderr, "Failed to allocate memory for database\n");
@@ -19,6 +20,13 @@ VectorDatabase* vector_db_init(size_t initial_capacity) {
         free(db);
         return NULL;
     }
+    db->kdtree = kdtree_create(dimension);
+    if (!db->kdtree) {
+        fprintf(stderr, "Failed to create KDTree\n");
+        free(db->vectors);
+        free(db);
+        return NULL;
+    }
     return db;
 }
 
@@ -27,6 +35,7 @@ void vector_db_free(VectorDatabase* db) {
         for (size_t i = 0; i < db->size; ++i) {
             free(db->vectors[i].data);
         }
+        kdtree_free(db->kdtree);
         free(db->vectors);
         free(db);
     }
@@ -44,7 +53,8 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     }
     vec.median_point = calculate_median(vec.data, vec.dimension); // Calculate and store the median point
     db->vectors[db->size] = vec;
-    printf("Inserted vector at index %zu with dimension %zu and median_point %f\n", db->size - 1, vec.dimension, vec.median_point);
+    kdtree_insert(db->kdtree, vec.data, db->size);
+    printf("Inserted vector at index %zu with dimension %zu and median_point %f\n", db->size, vec.dimension, vec.median_point);
     return db->size++;
 }
 
@@ -60,6 +70,7 @@ void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
         free(db->vectors[index].data);
         vec.median_point = calculate_median(vec.data, vec.dimension); // Calculate and store the median point
         db->vectors[index] = vec;
+        kdtree_insert(db->kdtree, vec.data, index);
     }
 }
 
@@ -97,7 +108,7 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
     printf("Database saved to %s\n", filename);
 }
 
-VectorDatabase* vector_db_load(const char* filename) {
+VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
         perror("Failed to open file for reading");
@@ -132,6 +143,18 @@ VectorDatabase* vector_db_load(const char* filename) {
         }
         fread(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
         fread(&db->vectors[i].median_point, sizeof(double), 1, file); // Load the median point
+    }
+
+    db->kdtree = kdtree_create(dimension);
+    if (!db->kdtree) {
+        fprintf(stderr, "Failed to create KDTree\n");
+        vector_db_free(db);
+        fclose(file);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < db->size; ++i) {
+        kdtree_insert(db->kdtree, db->vectors[i].data, i);
     }
 
     fclose(file);
@@ -185,4 +208,12 @@ double calculate_median(double* data, size_t dimension) {
     } else {
         return data[dimension / 2];
     }
+}
+
+int compare(const void* a, const void* b) {
+    double arg1 = *(const double*)a;
+    double arg2 = *(const double*)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
 }

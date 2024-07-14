@@ -1,7 +1,6 @@
-#include <microhttpd.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
 
 #include "cjson/cJSON.h"
@@ -82,7 +81,7 @@ static enum MHD_Result compare_handler_callback(void* cls, struct MHD_Connection
         return ret == MHD_YES ? MHD_YES : MHD_NO;
     }
 
-    float result = 0.0;
+    double result = 0.0;
     const char* key = NULL;
     if (strcmp(url, "/compare/cosine_similarity") == 0) {
         result = cosine_similarity(*vec1, *vec2);
@@ -233,13 +232,9 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
 
     vec.median_point = calculate_median(vec.data, vec.dimension);
 
-    size_t count = 1;
     const char* number_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "number");
-    if (number_str) {
-        count = (size_t)atoi(number_str);
-    }
+    size_t number = (number_str != NULL) ? (size_t)atoi(number_str) : 1;
 
-    // Find the nearest vectors
     double* distances = (double*)malloc(db->size * sizeof(double));
     size_t* indices = (size_t*)malloc(db->size * sizeof(size_t));
     size_t valid_count = 0;
@@ -250,29 +245,6 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
             indices[valid_count] = i;
             valid_count++;
         }
-    }
-
-    if (valid_count == 0) {
-        const char* error_msg = "{\"error\": \"No vectors with matching dimensions\"}";
-        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
-                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
-        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
-        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
-        MHD_destroy_response(response);
-        free(distances);
-        free(indices);
-        cJSON_Delete(json);
-        free(vec.data);
-        free(con_data->data);
-        free(con_data);
-        *con_cls = NULL;
-        return ret == MHD_YES ? MHD_YES : MHD_NO;
-    }
-
-    // Print debug information for distances and indices
-    printf("Distances and indices before sorting:\n");
-    for (size_t i = 0; i < valid_count; ++i) {
-        printf("Index %zu: distance = %f\n", indices[i], distances[i]);
     }
 
     // Sort distances and corresponding indices
@@ -290,35 +262,28 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
         }
     }
 
-    // Print debug information for sorted distances and indices
-    printf("Distances and indices after sorting:\n");
-    for (size_t i = 0; i < valid_count; ++i) {
-        printf("Index %zu: distance = %f\n", indices[i], distances[i]);
-    }
-
-    // Prepare the JSON response
-    cJSON *json_response = cJSON_CreateArray();
-    for (size_t i = 0; i < count && i < valid_count; ++i) {
-        cJSON *vector_obj = cJSON_CreateObject();
+    cJSON* json_response = cJSON_CreateArray();
+    for (size_t i = 0; i < number && i < valid_count; ++i) {
+        cJSON* vector_obj = cJSON_CreateObject();
         cJSON_AddNumberToObject(vector_obj, "index", indices[i]);
-        cJSON *vector_array = cJSON_CreateDoubleArray(db->vectors[indices[i]].data, db->vectors[indices[i]].dimension);
+        cJSON* vector_array = cJSON_CreateDoubleArray(db->vectors[indices[i]].data, db->vectors[indices[i]].dimension);
         cJSON_AddItemToObject(vector_obj, "vector", vector_array);
         cJSON_AddNumberToObject(vector_obj, "median_point", db->vectors[indices[i]].median_point);
         cJSON_AddItemToArray(json_response, vector_obj);
     }
 
+    char* response_str = cJSON_PrintUnformatted(json_response);
+    cJSON_Delete(json_response);
+
     free(distances);
     free(indices);
-    cJSON_Delete(json);
     free(vec.data);
     free(con_data->data);
     free(con_data);
     *con_cls = NULL;
 
-    char *response_str = cJSON_PrintUnformatted(json_response);
-    cJSON_Delete(json_response);
-
-    struct MHD_Response *response = MHD_create_response_from_buffer(strlen(response_str), response_str, MHD_RESPMEM_MUST_FREE);
+    struct MHD_Response* response = MHD_create_response_from_buffer(strlen(response_str),
+                                                                    (void*)response_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);

@@ -1,18 +1,18 @@
 # Define the compiler and the flags
 CC = gcc
-CFLAGS = -Wall -I/opt/homebrew/include -I./include
+CFLAGS = -Wall -I/opt/homebrew/include -I./include -g
 # For debug add -g
 # lldb ./executable/vector_db_server
 # run
 # br 
-LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson
+LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson -g
 
 # Define the target executable and directory
 TARGET_DIR = executable
 TARGET = $(TARGET_DIR)/vector_db_server
 
 # Define the source files
-SRCS = src/vector_database.c src/get_handler.c src/post_handler.c src/put_handler.c src/delete_handler.c src/compare_handler.c src/main.c
+SRCS = src/vector_database.c src/get_handler.c src/post_handler.c src/put_handler.c src/delete_handler.c src/compare_handler.c src/main.c src/kdtree.c
 
 # Define the object files with directory prefix
 OBJS = $(addprefix $(TARGET_DIR)/, $(notdir $(SRCS:.c=.o)))
