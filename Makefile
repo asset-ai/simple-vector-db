@@ -1,10 +1,11 @@
 # Define the compiler and the flags
 CC = gcc
 CFLAGS = -Wall -I/opt/homebrew/include -I./include
-# For debug add -g
+# For debug add -g -fsanitize=address
 # lldb ./executable/vector_db_server
+# breakpoint set -n malloc_error_break
 # run
-# br 
+# bt
 LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson
 
 # Define the target executable and directory
@@ -12,7 +13,7 @@ TARGET_DIR = executable
 TARGET = $(TARGET_DIR)/vector_db_server
 
 # Define the source files
-SRCS = src/vector_database.c src/get_handler.c src/post_handler.c src/put_handler.c src/delete_handler.c src/compare_handler.c src/main.c
+SRCS = src/vector_database.c src/get_handler.c src/post_handler.c src/put_handler.c src/delete_handler.c src/compare_handler.c src/main.c src/kdtree.c
 
 # Define the object files with directory prefix
 OBJS = $(addprefix $(TARGET_DIR)/, $(notdir $(SRCS:.c=.o)))
@@ -39,5 +40,6 @@ clean:
 # Clean up all generated files (object files and executable)
 clean-all:
 	rm -f $(OBJS) $(TARGET)
+	
 
 .PHONY: all clean clean-all

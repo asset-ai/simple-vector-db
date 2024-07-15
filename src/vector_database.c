@@ -3,14 +3,23 @@
 #include <string.h>
 #include <math.h>
 
-#include "vector_database.h"
+#include "../include/vector_database.h"
+#include "../include/kdtree.h"
 
-VectorDatabase* vector_db_init(size_t initial_capacity) {
+/**
+ * @brief Initialize a vector database with a given initial capacity and dimension.
+ * 
+ * @param initial_capacity The initial capacity of the database.
+ * @param dimension The dimension of the vectors.
+ * @return VectorDatabase* Pointer to the initialized vector database, or NULL on failure.
+ */
+VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
         fprintf(stderr, "Failed to allocate memory for database\n");
         return NULL;
     }
+
     db->size = 0;
     db->capacity = initial_capacity > 0 ? initial_capacity : 10;
     db->vectors = (Vector*)malloc(db->capacity * sizeof(Vector));
@@ -19,35 +28,78 @@ VectorDatabase* vector_db_init(size_t initial_capacity) {
         free(db);
         return NULL;
     }
+
+    db->kdtree = kdtree_create(dimension);
+    if (!db->kdtree) {
+        fprintf(stderr, "Failed to create KDTree\n");
+        free(db->vectors);
+        free(db);
+        return NULL;
+    } else {
+        printf("KDTree initialized\n");
+    }
+    printf("Database initialized with capacity: %zu\n", db->capacity);
     return db;
 }
 
+/**
+ * @brief Free the memory allocated for the vector database.
+ * 
+ * @param db Pointer to the vector database.
+ */
 void vector_db_free(VectorDatabase* db) {
     if (db) {
         for (size_t i = 0; i < db->size; ++i) {
             free(db->vectors[i].data);
         }
+        kdtree_free(db->kdtree);
         free(db->vectors);
         free(db);
     }
 }
 
+/**
+ * @brief Insert a vector into the vector database.
+ * 
+ * @param db Pointer to the vector database.
+ * @param vec The vector to insert.
+ * @return size_t The index of the inserted vector, or (size_t)-1 on failure.
+ */
 size_t vector_db_insert(VectorDatabase* db, Vector vec) {
+    printf("Inserting vector, current size: %zu, current capacity: %zu\n", db->size, db->capacity);
     if (db->size >= db->capacity) {
-        db->capacity *= 2;
-        Vector* new_vectors = (Vector*)realloc(db->vectors, db->capacity * sizeof(Vector));
+        size_t new_capacity = db->capacity > SIZE_MAX / 2 ? SIZE_MAX : db->capacity * 2;
+        printf("Current capacity: %zu\n", db->capacity);
+        printf("Requested new capacity: %zu\n", new_capacity);
+        printf("Maximum size_t value: %zu\n", SIZE_MAX);
+        if (new_capacity <= db->capacity || new_capacity > SIZE_MAX / sizeof(Vector)) {
+            fprintf(stderr, "Capacity overflow detected, unable to allocate more memory for vectors\n");
+            return (size_t)-1;
+        }
+        Vector* new_vectors = (Vector*)realloc(db->vectors, new_capacity * sizeof(Vector));
         if (!new_vectors) {
             fprintf(stderr, "Failed to allocate more memory for vectors\n");
-            return (size_t)-1; // Return -1 on failure
+            return (size_t)-1;
         }
         db->vectors = new_vectors;
+        db->capacity = new_capacity;
     }
-    vec.median_point = calculate_median(vec.data, vec.dimension); // Calculate and store the median point
+    if (!db->kdtree) {
+        fprintf(stderr, "KDTree is NULL before inserting\n");
+        return (size_t)-1;
+    }
     db->vectors[db->size] = vec;
-    printf("Inserted vector at index %zu with dimension %zu and median_point %f\n", db->size - 1, vec.dimension, vec.median_point);
+    kdtree_insert(db->kdtree, vec.data, db->size);
     return db->size++;
 }
 
+/**
+ * @brief Read a vector from the vector database at a given index.
+ * 
+ * @param db Pointer to the vector database.
+ * @param index The index of the vector to read.
+ * @return Vector* Pointer to the vector, or NULL if the index is out of range.
+ */
 Vector* vector_db_read(VectorDatabase* db, size_t index) {
     if (index < db->size) {
         return &db->vectors[index];
@@ -55,14 +107,27 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
     return NULL;
 }
 
+/**
+ * @brief Update a vector in the vector database at a given index.
+ * 
+ * @param db Pointer to the vector database.
+ * @param index The index of the vector to update.
+ * @param vec The new vector data.
+ */
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
     if (index < db->size) {
         free(db->vectors[index].data);
-        vec.median_point = calculate_median(vec.data, vec.dimension); // Calculate and store the median point
         db->vectors[index] = vec;
+        kdtree_insert(db->kdtree, vec.data, index);
     }
 }
 
+/**
+ * @brief Delete a vector from the vector database at a given index.
+ * 
+ * @param db Pointer to the vector database.
+ * @param index The index of the vector to delete.
+ */
 void vector_db_delete(VectorDatabase* db, size_t index) {
     if (index < db->size) {
         free(db->vectors[index].data);
@@ -73,6 +138,12 @@ void vector_db_delete(VectorDatabase* db, size_t index) {
     }
 }
 
+/**
+ * @brief Save the vector database to a file.
+ * 
+ * @param db Pointer to the vector database.
+ * @param filename The name of the file to save the database to.
+ */
 void vector_db_save(VectorDatabase* db, const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (!file) {
@@ -90,27 +161,31 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
         printf("Saving vector at index %zu with dimension %zu\n", i, db->vectors[i].dimension);
         fwrite(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         fwrite(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
-        fwrite(&db->vectors[i].median_point, sizeof(double), 1, file); // Save the median point
     }
 
     fclose(file);
     printf("Database saved to %s\n", filename);
 }
 
-VectorDatabase* vector_db_load(const char* filename) {
+/**
+ * @brief Load a vector database from a file.
+ * 
+ * @param filename The name of the file to load the database from.
+ * @param dimension The dimension of the vectors.
+ * @return VectorDatabase* Pointer to the loaded vector database, or NULL on failure.
+ */
+VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
         perror("Failed to open file for reading");
         return NULL;
     }
-
     VectorDatabase* db = (VectorDatabase*)malloc(sizeof(VectorDatabase));
     if (!db) {
         fprintf(stderr, "Failed to allocate memory for database\n");
         fclose(file);
         return NULL;
     }
-
     fread(&db->size, sizeof(size_t), 1, file);
     db->capacity = db->size > 0 ? db->size : 10;
     db->vectors = (Vector*)malloc(db->capacity * sizeof(Vector));
@@ -120,7 +195,6 @@ VectorDatabase* vector_db_load(const char* filename) {
         fclose(file);
         return NULL;
     }
-
     for (size_t i = 0; i < db->size; ++i) {
         fread(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         db->vectors[i].data = (double*)malloc(db->vectors[i].dimension * sizeof(double));
@@ -131,14 +205,29 @@ VectorDatabase* vector_db_load(const char* filename) {
             return NULL;
         }
         fread(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
-        fread(&db->vectors[i].median_point, sizeof(double), 1, file); // Load the median point
     }
-
+    db->kdtree = kdtree_create(dimension);
+    if (!db->kdtree) {
+        fprintf(stderr, "Failed to create KDTree\n");
+        vector_db_free(db);
+        fclose(file);
+        return NULL;
+    }
+    for (size_t i = 0; i < db->size; ++i) {
+        kdtree_insert(db->kdtree, db->vectors[i].data, i);
+    }
     fclose(file);
-    printf("Database loaded from %s\n", filename);
+    printf("Database loaded with size: %zu, capacity: %zu\n", db->size, db->capacity);
     return db;
 }
 
+/**
+ * @brief Calculate the cosine similarity between two vectors.
+ * 
+ * @param vec1 The first vector.
+ * @param vec2 The second vector.
+ * @return float The cosine similarity, or -1.0 if the dimensions do not match.
+ */
 float cosine_similarity(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -153,6 +242,13 @@ float cosine_similarity(Vector vec1, Vector vec2) {
     return dot_product / (sqrt(norm_a) * sqrt(norm_b));
 }
 
+/**
+ * @brief Calculate the Euclidean distance between two vectors.
+ * 
+ * @param vec1 The first vector.
+ * @param vec2 The second vector.
+ * @return float The Euclidean distance, or -1.0 if the dimensions do not match.
+ */
 float euclidean_distance(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -166,6 +262,13 @@ float euclidean_distance(Vector vec1, Vector vec2) {
     return sqrt(sum);
 }
 
+/**
+ * @brief Calculate the dot product of two vectors.
+ * 
+ * @param vec1 The first vector.
+ * @param vec2 The second vector.
+ * @return float The dot product, or -1.0 if the dimensions do not match.
+ */
 float dot_product(Vector vec1, Vector vec2) {
     if (vec1.dimension != vec2.dimension) {
         fprintf(stderr, "Vectors have different dimensions\n");
@@ -178,11 +281,17 @@ float dot_product(Vector vec1, Vector vec2) {
     return result;
 }
 
-double calculate_median(double* data, size_t dimension) {
-    // Simple test - need to implement kd-tree later
-    if (dimension % 2 == 0) {
-        return (data[dimension / 2 - 1] + data[dimension / 2]) / 2.0;
-    } else {
-        return data[dimension / 2];
-    }
+/**
+ * @brief Compare two double values (for use with qsort).
+ * 
+ * @param a Pointer to the first double value.
+ * @param b Pointer to the second double value.
+ * @return int -1 if the first value is less, 1 if the first value is greater, 0 if they are equal.
+ */
+int compare(const void* a, const void* b) {
+    double arg1 = *(const double*)a;
+    double arg2 = *(const double*)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
 }

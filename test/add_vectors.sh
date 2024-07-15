@@ -4,7 +4,8 @@
 RANDOM=$$$(date +%s)
 
 for i in $(seq 1 100000); do
-  vector_size=$(( (RANDOM % 10) + 1 ))
+  #vector_size=$(( (RANDOM % 10) + 1 ))
+  vector_size=20
   vector="["
   for ((j=0; j<$vector_size; j++)); do
     # Generate a new integer part for each element
