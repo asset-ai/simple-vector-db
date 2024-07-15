@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 /**
+ * @struct KDTreeNode
  * @brief Structure representing a KD-tree node.
  */
 typedef struct KDTreeNode {
@@ -14,6 +15,7 @@ typedef struct KDTreeNode {
 } KDTreeNode;
 
 /**
+ * @struct KDTree
  * @brief Structure representing a KD-tree.
  */
 typedef struct KDTree {

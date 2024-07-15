@@ -8,9 +8,9 @@
  * @struct DeleteHandlerData
  * @brief Structure to hold data for the DELETE handler.
  */
-struct DeleteHandlerData {
-    VectorDatabase *db; /**< Pointer to the VectorDatabase structure */
-};
+typedef struct DeleteHandlerData {
+    VectorDatabase* db; /**< Pointer to the vector database */
+} DeleteHandlerData;
 
 /**
  * @brief Handles DELETE requests.

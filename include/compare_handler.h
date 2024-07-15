@@ -8,9 +8,9 @@
  * @struct CompareHandlerData
  * @brief Structure to hold data for the compare handler.
  */
-struct CompareHandlerData {
+typedef struct CompareHandlerData {
     VectorDatabase* db; /**< Pointer to the VectorDatabase structure */
-};
+} CompareHandlerData;
 
 /**
  * @brief Handles comparison requests (e.g., cosine similarity, Euclidean distance, dot product).

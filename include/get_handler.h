@@ -8,9 +8,9 @@
  * @struct GetHandlerData
  * @brief Structure to hold data for the GET handler.
  */
-struct GetHandlerData {
-    VectorDatabase *db; /**< Pointer to the VectorDatabase structure */
-};
+typedef struct GetHandlerData {
+    VectorDatabase* db; /**< Pointer to the vector database */
+} GetHandlerData;
 
 /**
  * @brief Handles GET requests.

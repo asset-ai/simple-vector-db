@@ -1,11 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <microhttpd.h>
 #include "cjson/cJSON.h"
-
 #include "../include/vector_database.h"
+
+/**
+ * @struct GetHandlerData
+ * @brief Structure to hold data for the GET handler.
+ */
+typedef struct GetHandlerData {
+    VectorDatabase* db; /**< Pointer to the vector database */
+} GetHandlerData;
 
 /**
  * @brief Callback function to handle GET requests.
@@ -25,13 +31,6 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
                                             const char* version,
                                             const char* upload_data,
                                             size_t* upload_data_size, void** con_cls);
-
-/**
- * @brief Structure to hold data for the GET handler.
- */
-struct GetHandlerData {
-    VectorDatabase* db; /**< Pointer to the vector database */
-};
 
 /**
  * @brief Function to handle GET requests.
@@ -95,7 +94,7 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
     }
 
     // Convert the 'index' query parameter to a size_t value
-    size_t index = atoi(index_str);
+    size_t index = (size_t)atoi(index_str);
     if (index >= db->size) {
         // Respond with an error if the index is out of bounds
         const char* error_msg = "{\"error\": \"Index out of bounds\"}";
@@ -112,6 +111,17 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
     if (!vec) {
         // Respond with an error if the vector is not found
         const char* error_msg = "{\"error\": \"Vector not found\"}";
+        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
+        MHD_destroy_response(response);
+        return ret == MHD_YES ? MHD_YES : MHD_NO;
+    }
+
+    if (!vec->data) {
+        // Respond with an error if the vector data is invalid
+        const char* error_msg = "{\"error\": \"Vector data is invalid\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");

@@ -17,9 +17,10 @@
 #define DEFAULT_DIMENSION 3  ///< Example default dimension
 
 /**
+ * @struct ConnectionData
  * @brief Structure to hold connection data.
  */
-typedef struct {
+typedef struct ConnectionData {
     char *data;      ///< Pointer to data buffer
     size_t data_size; ///< Size of the data buffer
 } ConnectionData;
@@ -173,13 +174,13 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
                                       const char *version, const char *upload_data,
                                       size_t *upload_data_size, void **con_cls) {
     PostHandlerData* handler_data = (PostHandlerData*)cls;
-    VectorDatabase* db = handler_data->db;
+
     // Handle GET requests
     if (strcmp(method, "GET") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_get(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_get(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/compare/cosine_similarity") == 0 || strcmp(url, "/compare/euclidean_distance") == 0 || strcmp(url, "/compare/dot_product") == 0) {
-            return ahc_compare(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_compare(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle POST requests
@@ -187,16 +188,16 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
         if (strcmp(url, "/vector") == 0) {
             return ahc_post(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/nearest") == 0) {
-            return ahc_nearest(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_nearest(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle PUT requests
     else if (strcmp(method, "PUT") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_put(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_put(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
     // Handle DELETE requests
     else if (strcmp(method, "DELETE") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_delete(db, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_delete(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
 
     // Return 404 Not Found for unrecognized URLs

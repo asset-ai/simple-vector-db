@@ -8,7 +8,7 @@
  * @struct Vector
  * @brief Represents a vector with its data.
  */
-typedef struct {
+typedef struct Vector {
     size_t dimension;      /**< Dimension of the vector */
     double* data;          /**< Array of vector data */
 } Vector;
@@ -17,7 +17,7 @@ typedef struct {
  * @struct VectorDatabase
  * @brief Represents a database of vectors with dynamic resizing and KD-Tree for efficient search.
  */
-typedef struct {
+typedef struct VectorDatabase {
     Vector* vectors;       /**< Array of vectors */
     size_t size;           /**< Current size of the vector array */
     size_t capacity;       /**< Current capacity of the vector array */

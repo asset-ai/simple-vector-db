@@ -8,7 +8,10 @@
 #include "../include/compare_handler.h"
 #include "../include/vector_database.h"
 
-// Structure to hold connection data
+/**
+ * @struct ConnectionData
+ * @brief Structure to hold connection data
+ */
 typedef struct {
     char *data;       /**< Pointer to the data buffer */
     size_t data_size; /**< Size of the data buffer */
@@ -336,16 +339,33 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
         vec.data[i] = item->valuedouble;
     }
 
+    // Debug: Print out the vector
+    printf("Received vector for nearest neighbor search: [");
+    for (size_t i = 0; i < dimension; ++i) {
+        printf("%f", vec.data[i]);
+        if (i < dimension - 1) {
+            printf(", ");
+        }
+    }
+    printf("]\n");
+
     // Use KD-Tree to find the nearest neighbor
     size_t nearest_index = kdtree_nearest(db->kdtree, vec.data);
+
+    // Debug: Print the nearest index
+    printf("Nearest neighbor index: %zu\n", nearest_index);
 
     // Create the JSON response
     cJSON* json_response = cJSON_CreateObject();
     if (nearest_index != (size_t)-1) {
         Vector* nearest_vector = vector_db_read(db, nearest_index);
-        cJSON* vector_array = cJSON_CreateDoubleArray(nearest_vector->data, nearest_vector->dimension);
-        cJSON_AddNumberToObject(json_response, "index", nearest_index);
-        cJSON_AddItemToObject(json_response, "vector", vector_array);
+        if (nearest_vector) {
+            cJSON* vector_array = cJSON_CreateDoubleArray(nearest_vector->data, nearest_vector->dimension);
+            cJSON_AddNumberToObject(json_response, "index", nearest_index);
+            cJSON_AddItemToObject(json_response, "vector", vector_array);
+        } else {
+            cJSON_AddStringToObject(json_response, "error", "Nearest neighbor not found");
+        }
     } else {
         cJSON_AddStringToObject(json_response, "error", "No nearest neighbor found");
     }

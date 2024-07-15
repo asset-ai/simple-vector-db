@@ -7,10 +7,13 @@
 
 #include "../include/vector_database.h"
 
-// Structure to hold connection data
-typedef struct {
-    char *data;
-    size_t data_size;
+/**
+ * @struct ConnectionData
+ * @brief Structure to hold connection data
+ */
+typedef struct ConnectionData {
+    char *data;       /**< Pointer to the data buffer */
+    size_t data_size; /**< Size of the data buffer */
 } ConnectionData;
 
 /**

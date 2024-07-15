@@ -7,11 +7,12 @@
 #include "../include/vector_database.h"
 
 /**
+ * @struct DeleteHandlerData
  * @brief Structure to hold data for the DELETE handler.
  */
-struct DeleteHandlerData {
+typedef struct DeleteHandlerData {
     VectorDatabase* db; /**< Pointer to the vector database */
-};
+} DeleteHandlerData;
 
 /**
  * @brief Callback function to handle DELETE request data.
@@ -70,6 +71,8 @@ static enum MHD_Result delete_handler_callback(void* cls, struct MHD_Connection*
                                                const char* url, const char* method,
                                                const char* version, const char* upload_data,
                                                size_t* upload_data_size, void** con_cls) {
+    VectorDatabase* db = (VectorDatabase*)cls;
+
     // Retrieve the 'index' query parameter
     const char* index_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "index");
     if (!index_str) {
@@ -77,6 +80,7 @@ static enum MHD_Result delete_handler_callback(void* cls, struct MHD_Connection*
         const char* error_msg = "Missing 'index' query parameter";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "text/plain");
         int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
         MHD_destroy_response(response);
         return ret == MHD_YES ? MHD_YES : MHD_NO;
@@ -84,9 +88,19 @@ static enum MHD_Result delete_handler_callback(void* cls, struct MHD_Connection*
 
     // Convert the 'index' query parameter to a size_t value
     size_t index = atoi(index_str);
+    if (index >= db->size) {
+        // Respond with an error if the index is out of bounds
+        const char* error_msg = "Index out of bounds";
+        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "text/plain");
+        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
+        MHD_destroy_response(response);
+        return ret == MHD_YES ? MHD_YES : MHD_NO;
+    }
 
     // Delete the vector from the database
-    vector_db_delete((VectorDatabase*)cls, index);
+    vector_db_delete(db, index);
 
     // Respond with an empty response to indicate success
     struct MHD_Response* response = MHD_create_response_from_buffer(0, "", MHD_RESPMEM_PERSISTENT);

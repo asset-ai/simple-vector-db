@@ -8,9 +8,9 @@
  * @struct PutHandlerData
  * @brief Structure to hold data for the PUT handler.
  */
-struct PutHandlerData {
+typedef struct PutHandlerData {
     VectorDatabase *db; /**< Pointer to the vector database */
-};
+} PutHandlerData;
 
 /**
  * @brief Handles PUT requests.
