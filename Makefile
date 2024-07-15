@@ -1,12 +1,12 @@
 # Define the compiler and the flags
 CC = gcc
-CFLAGS = -Wall -I/opt/homebrew/include -I./include -g -fsanitize=address
+CFLAGS = -Wall -I/opt/homebrew/include -I./include
 # For debug add -g -fsanitize=address
 # lldb ./executable/vector_db_server
 # breakpoint set -n malloc_error_break
 # run
 # bt
-LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson -g
+LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson
 
 # Define the target executable and directory
 TARGET_DIR = executable
