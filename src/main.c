@@ -14,16 +14,40 @@
 
 #define DEFAULT_PORT 8888
 #define DB_FILENAME "vector_database.db"
-#define DEFAULT_DIMENSION 3  // Example default dimension
+#define DEFAULT_DIMENSION 3  ///< Example default dimension
 
+/**
+ * @brief Structure to hold connection data.
+ */
 typedef struct {
-    char *data;
-    size_t data_size;
+    char *data;      ///< Pointer to data buffer
+    size_t data_size; ///< Size of the data buffer
 } ConnectionData;
 
+/**
+ * @brief Callback function called when a request is completed.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param con_cls Connection-specific data.
+ * @param toe Termination code.
+ */
 static void request_completed_callback(void* cls, struct MHD_Connection* connection,
                                        void** con_cls, enum MHD_RequestTerminationCode toe);
 
+/**
+ * @brief Handler function for GET requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_get(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
@@ -31,6 +55,19 @@ static enum MHD_Result ahc_get(void *cls, struct MHD_Connection *connection,
     return get_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Handler function for POST requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_post(void *cls, struct MHD_Connection *connection,
                                 const char *url, const char *method,
                                 const char *version, const char *upload_data,
@@ -38,6 +75,19 @@ static enum MHD_Result ahc_post(void *cls, struct MHD_Connection *connection,
     return post_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Handler function for PUT requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_put(void *cls, struct MHD_Connection *connection,
                                const char *url, const char *method,
                                const char *version, const char *upload_data,
@@ -45,6 +95,19 @@ static enum MHD_Result ahc_put(void *cls, struct MHD_Connection *connection,
     return put_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Handler function for DELETE requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection *connection,
                                   const char *url, const char *method,
                                   const char *version, const char *upload_data,
@@ -52,6 +115,19 @@ static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection *connection,
     return delete_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Handler function for compare requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
@@ -59,6 +135,19 @@ static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
     return compare_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Handler function for nearest neighbor requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result ahc_nearest(void *cls, struct MHD_Connection *connection,
                                    const char *url, const char *method,
                                    const char *version, const char *upload_data,
@@ -66,6 +155,19 @@ static enum MHD_Result ahc_nearest(void *cls, struct MHD_Connection *connection,
     return nearest_handler(cls, connection, url, method, version, upload_data, upload_data_size, con_cls);
 }
 
+/**
+ * @brief Main access handler function to route HTTP requests.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param url The URL of the request.
+ * @param method The HTTP method.
+ * @param version The HTTP version.
+ * @param upload_data Data being uploaded in the request.
+ * @param upload_data_size Size of the upload data.
+ * @param con_cls Connection-specific data.
+ * @return MHD_Result indicating the success or failure of the operation.
+ */
 static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connection,
                                       const char *url, const char *method,
                                       const char *version, const char *upload_data,
@@ -106,6 +208,14 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
     return ret == MHD_YES ? MHD_YES : MHD_NO;
 }
 
+/**
+ * @brief Callback function called when a request is completed.
+ *
+ * @param cls User-defined data.
+ * @param connection The connection object.
+ * @param con_cls Connection-specific data.
+ * @param toe Termination code.
+ */
 static void request_completed_callback(void* cls, struct MHD_Connection* connection,
                                        void** con_cls, enum MHD_RequestTerminationCode toe) {
     ConnectionData *con_data = (ConnectionData*)*con_cls;
@@ -116,6 +226,13 @@ static void request_completed_callback(void* cls, struct MHD_Connection* connect
     }
 }
 
+/**
+ * @brief Main function to start the server and handle incoming requests.
+ *
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return int Status code.
+ */
 int main(int argc, char* argv[]) {
     int port = DEFAULT_PORT;
     size_t dimension = DEFAULT_DIMENSION;

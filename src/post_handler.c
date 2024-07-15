@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <microhttpd.h>
 #include "cjson/cJSON.h"
+
 #include "../include/vector_database.h"
 
 // Structure to hold connection data
@@ -339,12 +341,10 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
                                                                     (void*)response_str, MHD_RESPMEM_MUST_FREE);
     if (response == NULL) {
         fprintf(stderr, "post_handler_callback: Failed to create response\n");
-        free(vec.data);
         return MHD_NO;
     }
     MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
-    free(vec.data);  // Free the vector data after the response has been sent
     return ret == MHD_YES ? MHD_YES : MHD_NO;
 }
