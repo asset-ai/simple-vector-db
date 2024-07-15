@@ -31,7 +31,7 @@ Simple Vector DB is a lightweight, efficient, and easy-to-use vector database de
 - **Efficient Vector Storage**: Stores high-dimensional vectors with dynamic allocation.
 - **Vector Operations**: Supports insertion, retrieval, update, and deletion of vectors.
 - **Comparison Metrics**: Compare vectors using cosine similarity, Euclidean distance, and dot product.
-- **Nearest Vector Search**: Find the nearest vector based on KD-tree median points.
+- **Nearest Vector Search**: Find the nearest vector based on KD-tree median points for efficient indexing and improved performance.
 - **RESTful API**: Simple and intuitive API endpoints for easy integration.
 - **Persistent Storage**: Save and load vector databases from disk.
 
@@ -226,6 +226,7 @@ curl "http://localhost:8888/compare/dot_product?index1=0&index2=1"
 - **Request Body**: JSON array representing the input vector.
 - **Optional query parameter**: `number=(int)` The number of nearest vectors to return - default is 1.
 
+The `/nearest` endpoint uses a KD-tree for indexing, which allows for more efficient nearest neighbor searches. All vectors in the database must have the same dimension. During vector insertion, a point is added to the KD-tree, and during vector updates, the KD-tree is modified to reflect the changes.
 
 ```sh
 curl -X POST -H "Content-Type: application/json" -d '[7,3.00003,6.32,4.5,8,5,1.842,4.929066,7.94764,6.16051,6.946,4.71,4.3,1.704,2.321,5.9,6.74227,7.365,5.31,4.1705]' "http://localhost:8888/nearest"
@@ -236,7 +237,9 @@ curl -X POST -H "Content-Type: application/json" -d '[7,3.00003,6.32,4.5,8,5,1.8
 ```json
 {
   "index": 2,
-  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937, 6.389, 1.39],
+  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937,
+
+ 6.389, 1.39],
   "median_point": 3.0
 }
 ```
@@ -273,6 +276,4 @@ We welcome contributions to Simple Vector DB! Please fork the repository, create
 
 ## License
 
-This project is licensed under the MIT
-
- License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
