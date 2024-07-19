@@ -17,6 +17,7 @@
 #define DEFAULT_DB_FILENAME "vector_database.db"
 #define DEFAULT_KD_TREE_DIMENSION 3
 #define DEFAULT_DB_VECTOR_SIZE 128
+#define DEFAULT_CONFIG_FILENAME "config.json"
 
 /**
  * @struct Config
@@ -31,11 +32,17 @@ typedef struct Config {
 
 Config config = {DEFAULT_DB_FILENAME, DEFAULT_PORT, DEFAULT_KD_TREE_DIMENSION, DEFAULT_DB_VECTOR_SIZE};
 
+/**
+ * @brief Load the configuration from a JSON file.
+ * 
+ * @param filename The path to the configuration file.
+ * @param config The config structure to populate.
+ */
 void load_config(const char *filename, Config *config) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        fprintf(stderr, "Could not open config file: %s\n", filename);
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Config file not found, using default or command-line values\n");
+        return; // Use default or command-line values if config file not found
     }
 
     fseek(file, 0, SEEK_END);
@@ -65,7 +72,7 @@ void load_config(const char *filename, Config *config) {
 
     cJSON *dimension = cJSON_GetObjectItem(json, "DEFAULT_KD_TREE_DIMENSION");
     if (cJSON_IsNumber(dimension)) {
-        config->dimension = (size_t)dimension->valueint;
+        config->kd_tree_dimension = (size_t)dimension->valueint;
     }
 
     cJSON *db_vector_size = cJSON_GetObjectItem(json, "DB_VECTOR_SIZE");
@@ -76,7 +83,6 @@ void load_config(const char *filename, Config *config) {
     cJSON_Delete(json);
     free(data);
 }
-
 
 /**
  * @struct ConnectionData
@@ -298,33 +304,50 @@ static void request_completed_callback(void* cls, struct MHD_Connection* connect
  */
 int main(int argc, char* argv[]) {
     char *config_path = NULL;
+    int port = DEFAULT_PORT;
+    size_t kd_tree_dimension = DEFAULT_KD_TREE_DIMENSION;
+    size_t db_vector_size = DEFAULT_DB_VECTOR_SIZE;
+    char *db_filename = DEFAULT_DB_FILENAME;
 
     // Parse command-line arguments for port and dimension
-        int opt;
-    while ((opt = getopt(argc, argv, "p:d:c:")) != -1) {
+    int opt;
+    while ((opt = getopt(argc, argv, "p:d:s:f:c:")) != -1) {
         switch (opt) {
             case 'p':
-                config.port = atoi(optarg);
+                port = atoi(optarg);
                 break;
             case 'd':
-                config.kd_tree_dimension = (size_t)atoi(optarg);
+                kd_tree_dimension = (size_t)atoi(optarg);
+                break;
+            case 's':
+                db_vector_size = (size_t)atoi(optarg);
+                break;
+            case 'f':
+                db_filename = optarg;
                 break;
             case 'c':
                 config_path = optarg;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-p port] [-d dimension] [-c config]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-p port] [-d dimension] [-s vector_size] [-f db_filename] [-c config]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
+    // If a config path is provided, load the configuration from the file
     if (config_path) {
         load_config(config_path, &config);
+    } else {
+        // Use command-line arguments or defaults
+        config.port = port;
+        config.kd_tree_dimension = kd_tree_dimension;
+        config.db_vector_size = db_vector_size;
+        config.db_filename = db_filename;
     }
 
     VectorDatabase *db = vector_db_load(config.db_filename, config.kd_tree_dimension);
     if (db == NULL) {
-        db = vector_db_init(0, config.dimension);
+        db = vector_db_init(0, config.kd_tree_dimension);
         if (!db) {
             fprintf(stderr, "Failed to initialize vector database\n");
             return 1;
@@ -333,6 +356,7 @@ int main(int argc, char* argv[]) {
 
     PostHandlerData handler_data;
     handler_data.db = db;
+    handler_data.db_vector_size = config.db_vector_size;
 
     // Test initialization and reading of vectors
     for (size_t i = 0; i < db->size; i++) {

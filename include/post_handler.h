@@ -9,7 +9,8 @@
  * @brief Structure to hold data for the POST handler.
  */
 typedef struct {
-    VectorDatabase* db;  /**< Pointer to the vector database */
+    VectorDatabase* db;
+    size_t db_vector_size;
 } PostHandlerData;
 
 /**
