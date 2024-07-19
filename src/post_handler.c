@@ -17,6 +17,15 @@ typedef struct ConnectionData {
 } ConnectionData;
 
 /**
+ * @struct PostHandlerData
+ * @brief Structure to hold data for the POST handler
+ */
+typedef struct {
+    VectorDatabase* db;
+    size_t db_vector_size;
+} PostHandlerData;
+
+/**
  * @brief Callback function to handle the POST request data.
  * 
  * @param cls User-defined data, in this case, the database.
@@ -33,11 +42,6 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
                                             const char* url, const char* method,
                                             const char* version, const char* upload_data,
                                             size_t* upload_data_size, void** con_cls);
-
-// Structure to hold data for the POST handler
-struct PostHandlerData {
-    VectorDatabase* db;
-};
 
 /**
  * @brief Function to handle POST requests.
@@ -73,9 +77,9 @@ enum MHD_Result post_handler(void* cls, struct MHD_Connection* connection,
     }
 
     // Retrieve the handler data
-    struct PostHandlerData* handler_data = (struct PostHandlerData*)cls;
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
     printf("post_handler: Retrieved handler_data\n");
-    return post_handler_callback(handler_data->db, connection, url, method, version,
+    return post_handler_callback(handler_data, connection, url, method, version,
                                  upload_data, upload_data_size, con_cls);
 }
 
@@ -99,7 +103,10 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     printf("post_handler_callback: Entered\n");
 
     ConnectionData *con_data = (ConnectionData *)*con_cls;
-    VectorDatabase* db = (VectorDatabase*)cls;
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    VectorDatabase* db = handler_data->db;
+    size_t expected_vector_size = handler_data->db_vector_size;
+
     if (!db) {
         fprintf(stderr, "post_handler_callback: VectorDatabase is NULL\n");
         return MHD_NO;
@@ -182,6 +189,33 @@ static enum MHD_Result post_handler_callback(void* cls, struct MHD_Connection* c
     // Get the dimension of the vector from the JSON array size
     size_t dimension = cJSON_GetArraySize(json);
     printf("post_handler_callback: Vector dimension: %zu\n", dimension);
+
+    // Check if the vector size matches the expected size
+    if (dimension != expected_vector_size) {
+        fprintf(stderr, "post_handler_callback: Vector size mismatch. Expected %zu, got %zu\n", expected_vector_size, dimension);
+        const char* error_msg = "{\"error\": \"Vector size mismatch\"}";
+        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "post_handler_callback: Failed to create response\n");
+            cJSON_Delete(json);
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
+        MHD_destroy_response(response);
+        cJSON_Delete(json);
+        printf("post_handler_callback: Freeing con_data->data\n");
+        free(con_data->data);
+        printf("post_handler_callback: Freeing con_data\n");
+        free(con_data);
+        *con_cls = NULL;
+        return ret == MHD_YES ? MHD_YES : MHD_NO;
+    }
+
     Vector vec;
     vec.dimension = dimension;
     // Allocate memory for the vector data
