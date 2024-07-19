@@ -131,7 +131,8 @@ Replace `/opt/homebrew/include` and `/opt/homebrew/lib` with the appropriate pat
 
 ### Starting the Server
 
-You can start the server on the default port (8888) or specify a custom port using the `-p` or `--port` flag.
+You can start the server on the default port (8888) or specify a custom port using the -p or --port flag. Additionally, you can specify a configuration file using the -c flag.
+
 
 ```sh
 # Start the server on the default port 8888
@@ -139,7 +140,29 @@ You can start the server on the default port (8888) or specify a custom port usi
 
 # Start the server on a custom port (e.g., 8080)
 ./executable/vector_db_server -p 8080
+
+# Start the server with a configuration file
+./executable/vector_db_server -c config.json
 ```
+
+###Sample Configuration File
+Save this as `config.json` :
+
+```
+{
+  "DB_FILENAME": "vector_database.db",
+  "DEFAULT_PORT": 8888,
+  "DEFAULT_DIMENSION": 3,
+  "DB_VECTOR_SIZE": 128
+}
+```
+
+####Explanation of the Configuration File :
+
+`DB_FILENAME` : The name of the database file (e.g., `vector_database.db`).
+`DEFAULT_PORT` : The port number on which the server will run (e.g., `8888`).
+`DEFAULT_DIMENSION` : The default dimension for the kd-tree (e.g., `3`).
+`DB_VECTOR_SIZE` : The size of the database vectors (e.g., `128`).
 
 ### Fill Database with Dummy vector
 You can fill the database with different vectors of different dimensions. Randomly generated.

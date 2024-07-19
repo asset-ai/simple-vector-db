@@ -1,0 +1,6 @@
+{
+    "DB_FILENAME": "vector_database.db",
+    "DEFAULT_PORT": 8888,
+    "DEFAULT_KD_TREE_DIMENSION": 3,
+    "DB_VECTOR_SIZE": 128
+  }

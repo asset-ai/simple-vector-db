@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <microhttpd.h>
+#include <cjson/cJSON.h>
 
 #include "../include/vector_database.h"
 #include "../include/get_handler.h"
@@ -13,8 +14,69 @@
 #include "../include/compare_handler.h"
 
 #define DEFAULT_PORT 8888
-#define DB_FILENAME "vector_database.db"
-#define DEFAULT_DIMENSION 3  ///< Example default dimension
+#define DEFAULT_DB_FILENAME "vector_database.db"
+#define DEFAULT_KD_TREE_DIMENSION 3
+#define DEFAULT_DB_VECTOR_SIZE 128
+
+/**
+ * @struct Config
+ * @brief Config file informations such as filename, listening port, kd_tree dimension deep and db_vector_size
+ */
+typedef struct Config {
+    char *db_filename;
+    int port;
+    size_t kd_tree_dimension;
+    size_t db_vector_size;
+} Config;
+
+Config config = {DEFAULT_DB_FILENAME, DEFAULT_PORT, DEFAULT_KD_TREE_DIMENSION, DEFAULT_DB_VECTOR_SIZE};
+
+void load_config(const char *filename, Config *config) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        fprintf(stderr, "Could not open config file: %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *data = (char *)malloc(length + 1);
+    fread(data, 1, length, file);
+    fclose(file);
+    data[length] = '\0';
+
+    cJSON *json = cJSON_Parse(data);
+    if (!json) {
+        fprintf(stderr, "Error parsing config file: %s\n", cJSON_GetErrorPtr());
+        free(data);
+        exit(EXIT_FAILURE);
+    }
+
+    cJSON *db_filename = cJSON_GetObjectItem(json, "DB_FILENAME");
+    if (cJSON_IsString(db_filename)) {
+        config->db_filename = strdup(db_filename->valuestring);
+    }
+
+    cJSON *port = cJSON_GetObjectItem(json, "DEFAULT_PORT");
+    if (cJSON_IsNumber(port)) {
+        config->port = port->valueint;
+    }
+
+    cJSON *dimension = cJSON_GetObjectItem(json, "DEFAULT_KD_TREE_DIMENSION");
+    if (cJSON_IsNumber(dimension)) {
+        config->dimension = (size_t)dimension->valueint;
+    }
+
+    cJSON *db_vector_size = cJSON_GetObjectItem(json, "DB_VECTOR_SIZE");
+    if (cJSON_IsNumber(db_vector_size)) {
+        config->db_vector_size = (size_t)db_vector_size->valueint;
+    }
+
+    cJSON_Delete(json);
+    free(data);
+}
+
 
 /**
  * @struct ConnectionData
@@ -235,32 +297,34 @@ static void request_completed_callback(void* cls, struct MHD_Connection* connect
  * @return int Status code.
  */
 int main(int argc, char* argv[]) {
-    int port = DEFAULT_PORT;
-    size_t dimension = DEFAULT_DIMENSION;
+    char *config_path = NULL;
 
     // Parse command-line arguments for port and dimension
-    int opt;
-    while ((opt = getopt(argc, argv, "p:d:")) != -1) {
+        int opt;
+    while ((opt = getopt(argc, argv, "p:d:c:")) != -1) {
         switch (opt) {
             case 'p':
-                port = atoi(optarg);
+                config.port = atoi(optarg);
                 break;
             case 'd':
-                dimension = (size_t)atoi(optarg);
+                config.kd_tree_dimension = (size_t)atoi(optarg);
+                break;
+            case 'c':
+                config_path = optarg;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-p port] [-d dimension]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-p port] [-d dimension] [-c config]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
-    VectorDatabase *db;
+    if (config_path) {
+        load_config(config_path, &config);
+    }
 
-    // Load the database from file if it exists
-    db = vector_db_load(DB_FILENAME, dimension);
+    VectorDatabase *db = vector_db_load(config.db_filename, config.kd_tree_dimension);
     if (db == NULL) {
-        // If loading failed, initialize a new database
-        db = vector_db_init(0, dimension); // Passing 0 to initialize an empty database
+        db = vector_db_init(0, config.dimension);
         if (!db) {
             fprintf(stderr, "Failed to initialize vector database\n");
             return 1;
@@ -290,7 +354,7 @@ int main(int argc, char* argv[]) {
     struct MHD_Daemon *daemon;
 
     // Start the HTTP daemon
-    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
+    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, config.port, NULL, NULL,
                               &access_handler, &handler_data,
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed_callback, NULL,
                               MHD_OPTION_END);
@@ -300,13 +364,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    printf("Server running on port %d\n", port);
+    printf("Server running on port %d\n", config.port);
 
     // Wait for user input to terminate the server
     getchar();
 
     // Save the database to file before shutting down
-    vector_db_save(db, DB_FILENAME);
+    vector_db_save(db, config.db_filename);
 
     // Stop the HTTP daemon and free the database
     MHD_stop_daemon(daemon);
