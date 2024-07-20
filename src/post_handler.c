@@ -6,24 +6,9 @@
 #include "cjson/cJSON.h"
 
 #include "../include/vector_database.h"
+#include "../include/connection_data.h"
+#include "../include/post_handler.h"
 
-/**
- * @struct ConnectionData
- * @brief Structure to hold connection data
- */
-typedef struct ConnectionData {
-    char *data;       /**< Pointer to the data buffer */
-    size_t data_size; /**< Size of the data buffer */
-} ConnectionData;
-
-/**
- * @struct PostHandlerData
- * @brief Structure to hold data for the POST handler
- */
-typedef struct {
-    VectorDatabase* db;
-    size_t db_vector_size;
-} PostHandlerData;
 
 /**
  * @brief Callback function to handle the POST request data.

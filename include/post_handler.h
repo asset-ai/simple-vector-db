@@ -6,7 +6,8 @@
 #include "vector_database.h"
 
 /**
- * @brief Structure to hold data for the POST handler.
+ * @struct PostHandlerData
+ * @brief Structure to hold data for the POST handler
  */
 typedef struct {
     VectorDatabase* db;

@@ -1,17 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <microhttpd.h>
 #include "cjson/cJSON.h"
-#include "../include/vector_database.h"
 
-/**
- * @struct GetHandlerData
- * @brief Structure to hold data for the GET handler.
- */
-typedef struct GetHandlerData {
-    VectorDatabase* db; /**< Pointer to the vector database */
-} GetHandlerData;
+#include "../include/vector_database.h"
+#include "../include/get_handler.h"
+
 
 /**
  * @brief Callback function to handle GET requests.

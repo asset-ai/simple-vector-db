@@ -7,15 +7,7 @@
 
 #include "../include/compare_handler.h"
 #include "../include/vector_database.h"
-
-/**
- * @struct ConnectionData
- * @brief Structure to hold connection data
- */
-typedef struct {
-    char *data;       /**< Pointer to the data buffer */
-    size_t data_size; /**< Size of the data buffer */
-} ConnectionData;
+#include "../include/connection_data.h"
 
 /**
  * @brief Callback function to handle comparison requests.

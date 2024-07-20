@@ -12,6 +12,7 @@
 #include "../include/put_handler.h"
 #include "../include/delete_handler.h"
 #include "../include/compare_handler.h"
+#include "../include/connection_data.h"
 
 #define DEFAULT_PORT 8888
 #define DEFAULT_DB_FILENAME "vector_database.db"
@@ -83,15 +84,6 @@ void load_config(const char *filename, Config *config) {
     cJSON_Delete(json);
     free(data);
 }
-
-/**
- * @struct ConnectionData
- * @brief Structure to hold connection data.
- */
-typedef struct ConnectionData {
-    char *data;      ///< Pointer to data buffer
-    size_t data_size; ///< Size of the data buffer
-} ConnectionData;
 
 /**
  * @brief Callback function called when a request is completed.
@@ -241,31 +233,32 @@ static enum MHD_Result access_handler(void *cls, struct MHD_Connection *connecti
                                       const char *url, const char *method,
                                       const char *version, const char *upload_data,
                                       size_t *upload_data_size, void **con_cls) {
-    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    PostHandlerData* post_handler_data = (PostHandlerData*)cls;
+    PutHandlerData* put_handler_data = (PutHandlerData*)cls;
 
     // Handle GET requests
     if (strcmp(method, "GET") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_get(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_get(post_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/compare/cosine_similarity") == 0 || strcmp(url, "/compare/euclidean_distance") == 0 || strcmp(url, "/compare/dot_product") == 0) {
-            return ahc_compare(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_compare(post_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle POST requests
     else if (strcmp(method, "POST") == 0) {
         if (strcmp(url, "/vector") == 0) {
-            return ahc_post(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_post(post_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         } else if (strcmp(url, "/nearest") == 0) {
-            return ahc_nearest(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+            return ahc_nearest(post_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
         }
     }
     // Handle PUT requests
     else if (strcmp(method, "PUT") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_put(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_put(put_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
     // Handle DELETE requests
     else if (strcmp(method, "DELETE") == 0 && strcmp(url, "/vector") == 0) {
-        return ahc_delete(handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
+        return ahc_delete(post_handler_data, connection, url, method, version, upload_data, upload_data_size, con_cls);
     }
 
     // Return 404 Not Found for unrecognized URLs
@@ -354,9 +347,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    PostHandlerData handler_data;
-    handler_data.db = db;
-    handler_data.db_vector_size = config.db_vector_size;
+    PostHandlerData post_handler_data;
+    post_handler_data.db = db;
+    post_handler_data.db_vector_size = config.db_vector_size;
+
+    PutHandlerData put_handler_data;
+    put_handler_data.db = db;
+    put_handler_data.db_vector_size = config.db_vector_size;
 
     // Test initialization and reading of vectors
     for (size_t i = 0; i < db->size; i++) {
@@ -379,7 +376,7 @@ int main(int argc, char* argv[]) {
 
     // Start the HTTP daemon
     daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, config.port, NULL, NULL,
-                              &access_handler, &handler_data,
+                              &access_handler, &post_handler_data,
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed_callback, NULL,
                               MHD_OPTION_END);
     if (!daemon) {
