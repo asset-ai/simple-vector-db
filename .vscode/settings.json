@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "compare_handler.h": "c",
+        "connection_data.h": "c"
+    }
+}
