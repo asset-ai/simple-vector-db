@@ -6,15 +6,6 @@
 #include "vector_database.h"
 
 /**
- * @struct PutHandlerData
- * @brief Structure to hold data for the PUT handler
- */
-typedef struct {
-    VectorDatabase* db;
-    size_t db_vector_size;
-} PutHandlerData;
-
-/**
  * @brief Handles PUT requests.
  * 
  * @param cls User-defined data, in this case, the database.
