@@ -7,20 +7,21 @@
 
 #include "../include/compare_handler.h"
 #include "../include/vector_database.h"
+#include "../include/connection_data.h"
 
 /**
- * @struct ConnectionData
- * @brief Structure to hold connection data
+ * @struct PostHandlerData
+ * @brief Structure to hold data for the POST handler
  */
 typedef struct {
-    char *data;       /**< Pointer to the data buffer */
-    size_t data_size; /**< Size of the data buffer */
-} ConnectionData;
+    VectorDatabase* db;
+    size_t db_vector_size;
+} PostHandlerData;
 
 /**
  * @brief Callback function to handle comparison requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "GET").
@@ -38,7 +39,7 @@ static enum MHD_Result compare_handler_callback(void* cls, struct MHD_Connection
 /**
  * @brief Function to handle comparison requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "GET").
@@ -52,15 +53,15 @@ enum MHD_Result compare_handler(void* cls, struct MHD_Connection* connection,
                                 const char* url, const char* method,
                                 const char* version, const char* upload_data,
                                 size_t* upload_data_size, void** con_cls) {
-    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
-    return compare_handler_callback(handler_data->db, connection, url, method, version,
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    return compare_handler_callback(handler_data, connection, url, method, version,
                                     upload_data, upload_data_size, con_cls);
 }
 
 /**
  * @brief Callback function to handle comparison requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "GET").
@@ -74,7 +75,9 @@ static enum MHD_Result compare_handler_callback(void* cls, struct MHD_Connection
                                                 const char* url, const char* method,
                                                 const char* version, const char* upload_data,
                                                 size_t* upload_data_size, void** con_cls) {
-    VectorDatabase* db = (VectorDatabase*)cls;
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    VectorDatabase* db = handler_data->db;
+    size_t expected_vector_size = handler_data->db_vector_size;
 
     // Retrieve 'index1' and 'index2' query parameters
     const char* index1_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "index1");
@@ -124,6 +127,17 @@ static enum MHD_Result compare_handler_callback(void* cls, struct MHD_Connection
     if (vec1->dimension != vec2->dimension) {
         // Respond with an error if the vectors have different dimensions
         const char* error_msg = "{\"error\": \"Vectors have different dimensions\"}";
+        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
+        MHD_destroy_response(response);
+        return ret == MHD_YES ? MHD_YES : MHD_NO;
+    }
+
+    // Check if the vectors match the expected size
+    if (vec1->dimension != expected_vector_size || vec2->dimension != expected_vector_size) {
+        const char* error_msg = "{\"error\": \"Vector size mismatch\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
@@ -183,7 +197,7 @@ static enum MHD_Result compare_handler_callback(void* cls, struct MHD_Connection
 /**
  * @brief Callback function to handle nearest neighbor requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "POST").
@@ -201,7 +215,7 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
 /**
  * @brief Function to handle nearest neighbor requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "POST").
@@ -228,15 +242,15 @@ enum MHD_Result nearest_handler(void* cls, struct MHD_Connection* connection,
     }
 
     // Retrieve the handler data
-    struct CompareHandlerData* handler_data = (struct CompareHandlerData*)cls;
-    return nearest_handler_callback(handler_data->db, connection, url, method, version,
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    return nearest_handler_callback(handler_data, connection, url, method, version,
                                     upload_data, upload_data_size, con_cls);
 }
 
 /**
  * @brief Callback function to handle nearest neighbor requests.
  * 
- * @param cls User-defined data, in this case, the vector database.
+ * @param cls User-defined data, in this case, the handler data.
  * @param connection Pointer to MHD_Connection object.
  * @param url URL of the request.
  * @param method HTTP method (should be "POST").
@@ -251,7 +265,9 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
                                                 const char* version, const char* upload_data,
                                                 size_t* upload_data_size, void** con_cls) {
     ConnectionData *con_data = (ConnectionData *)*con_cls;
-    VectorDatabase* db = (VectorDatabase*)cls;
+    PostHandlerData* handler_data = (PostHandlerData*)cls;
+    VectorDatabase* db = handler_data->db;
+    size_t expected_vector_size = handler_data->db_vector_size;
 
     // Check if there's data to be uploaded
     if (*upload_data_size != 0) {
@@ -298,6 +314,32 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
 
     // Get the dimension of the vector from the JSON array size
     size_t dimension = cJSON_GetArraySize(json);
+    printf("nearest_handler_callback: Vector dimension: %zu\n", dimension);
+
+    // Check if the vector size matches the expected size
+    if (dimension != expected_vector_size) {
+        fprintf(stderr, "nearest_handler_callback: Vector size mismatch. Expected %zu, got %zu\n", expected_vector_size, dimension);
+        const char* error_msg = "{\"error\": \"Vector size mismatch\"}";
+        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "nearest_handler_callback: Failed to create response\n");
+            cJSON_Delete(json);
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
+        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
+        MHD_destroy_response(response);
+        cJSON_Delete(json);
+        free(con_data->data);
+        free(con_data);
+        *con_cls = NULL;
+        return ret == MHD_YES ? MHD_YES : MHD_NO;
+    }
+
     Vector vec;
     vec.dimension = dimension;
     // Allocate memory for the vector data
@@ -307,6 +349,14 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
         const char* error_msg = "{\"error\": \"Memory allocation failed\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+        if (response == NULL) {
+            fprintf(stderr, "nearest_handler_callback: Failed to create response\n");
+            cJSON_Delete(json);
+            free(con_data->data);
+            free(con_data);
+            *con_cls = NULL;
+            return MHD_NO;
+        }
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
         int ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
         MHD_destroy_response(response);

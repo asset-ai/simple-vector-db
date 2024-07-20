@@ -2,6 +2,7 @@
 #define DELETE_HANDLER_H
 
 #include <microhttpd.h>
+
 #include "vector_database.h"
 
 /**

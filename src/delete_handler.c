@@ -5,14 +5,7 @@
 #include <microhttpd.h>
 
 #include "../include/vector_database.h"
-
-/**
- * @struct DeleteHandlerData
- * @brief Structure to hold data for the DELETE handler.
- */
-typedef struct DeleteHandlerData {
-    VectorDatabase* db; /**< Pointer to the vector database */
-} DeleteHandlerData;
+#include "../include/delete_handler.h"
 
 /**
  * @brief Callback function to handle DELETE request data.

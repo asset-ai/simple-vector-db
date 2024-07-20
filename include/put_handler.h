@@ -2,15 +2,8 @@
 #define PUT_HANDLER_H
 
 #include <microhttpd.h>
-#include "vector_database.h"
 
-/**
- * @struct PutHandlerData
- * @brief Structure to hold data for the PUT handler.
- */
-typedef struct PutHandlerData {
-    VectorDatabase *db; /**< Pointer to the vector database */
-} PutHandlerData;
+#include "vector_database.h"
 
 /**
  * @brief Handles PUT requests.
