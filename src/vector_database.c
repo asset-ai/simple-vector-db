@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>  // Include pthread library
 
 #include "../include/vector_database.h"
 #include "../include/kdtree.h"
@@ -38,6 +39,16 @@ VectorDatabase* vector_db_init(size_t initial_capacity, size_t dimension) {
     } else {
         printf("KDTree initialized\n");
     }
+
+    // Initialize the mutex
+    if (pthread_mutex_init(&db->mutex, NULL) != 0) {
+        fprintf(stderr, "Failed to initialize mutex\n");
+        kdtree_free(db->kdtree);
+        free(db->vectors);
+        free(db);
+        return NULL;
+    }
+
     printf("Database initialized with capacity: %zu\n", db->capacity);
     return db;
 }
@@ -54,6 +65,8 @@ void vector_db_free(VectorDatabase* db) {
         }
         kdtree_free(db->kdtree);
         free(db->vectors);
+        // Destroy the mutex
+        pthread_mutex_destroy(&db->mutex);
         free(db);
     }
 }
@@ -66,6 +79,8 @@ void vector_db_free(VectorDatabase* db) {
  * @return size_t The index of the inserted vector, or (size_t)-1 on failure.
  */
 size_t vector_db_insert(VectorDatabase* db, Vector vec) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
+
     printf("Inserting vector, current size: %zu, current capacity: %zu\n", db->size, db->capacity);
     if (db->size >= db->capacity) {
         size_t new_capacity = db->capacity > SIZE_MAX / 2 ? SIZE_MAX : db->capacity * 2;
@@ -74,11 +89,13 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
         printf("Maximum size_t value: %zu\n", SIZE_MAX);
         if (new_capacity <= db->capacity || new_capacity > SIZE_MAX / sizeof(Vector)) {
             fprintf(stderr, "Capacity overflow detected, unable to allocate more memory for vectors\n");
+            pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
             return (size_t)-1;
         }
         Vector* new_vectors = (Vector*)realloc(db->vectors, new_capacity * sizeof(Vector));
         if (!new_vectors) {
             fprintf(stderr, "Failed to allocate more memory for vectors\n");
+            pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
             return (size_t)-1;
         }
         db->vectors = new_vectors;
@@ -86,11 +103,15 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
     }
     if (!db->kdtree) {
         fprintf(stderr, "KDTree is NULL before inserting\n");
+        pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
         return (size_t)-1;
     }
     db->vectors[db->size] = vec;
     kdtree_insert(db->kdtree, vec.data, db->size);
-    return db->size++;
+    size_t index = db->size++;
+    
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
+    return index;
 }
 
 /**
@@ -101,10 +122,13 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
  * @return Vector* Pointer to the vector, or NULL if the index is out of range.
  */
 Vector* vector_db_read(VectorDatabase* db, size_t index) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
+    Vector* vec = NULL;
     if (index < db->size) {
-        return &db->vectors[index];
+        vec = &db->vectors[index];
     }
-    return NULL;
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
+    return vec;
 }
 
 /**
@@ -115,11 +139,13 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
  * @param vec The new vector data.
  */
 void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
     if (index < db->size) {
         free(db->vectors[index].data);
         db->vectors[index] = vec;
         kdtree_insert(db->kdtree, vec.data, index);
     }
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
 }
 
 /**
@@ -129,6 +155,7 @@ void vector_db_update(VectorDatabase* db, size_t index, Vector vec) {
  * @param index The index of the vector to delete.
  */
 void vector_db_delete(VectorDatabase* db, size_t index) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
     if (index < db->size) {
         free(db->vectors[index].data);
         for (size_t i = index; i < db->size - 1; ++i) {
@@ -136,6 +163,7 @@ void vector_db_delete(VectorDatabase* db, size_t index) {
         }
         db->size--;
     }
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
 }
 
 /**
@@ -145,9 +173,11 @@ void vector_db_delete(VectorDatabase* db, size_t index) {
  * @param filename The name of the file to save the database to.
  */
 void vector_db_save(VectorDatabase* db, const char* filename) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
     FILE* file = fopen(filename, "wb");
     if (!file) {
         perror("Failed to open file for writing");
+        pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
         return;
     }
 
@@ -164,6 +194,7 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
     }
 
     fclose(file);
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
     printf("Database saved to %s\n", filename);
 }
 
@@ -216,6 +247,15 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
     for (size_t i = 0; i < db->size; ++i) {
         kdtree_insert(db->kdtree, db->vectors[i].data, i);
     }
+
+    // Initialize the mutex
+    if (pthread_mutex_init(&db->mutex, NULL) != 0) {
+        fprintf(stderr, "Failed to initialize mutex\n");
+        vector_db_free(db);
+        fclose(file);
+        return NULL;
+    }
+
     fclose(file);
     printf("Database loaded with size: %zu, capacity: %zu\n", db->size, db->capacity);
     return db;

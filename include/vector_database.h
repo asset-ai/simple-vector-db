@@ -2,6 +2,7 @@
 #define VECTOR_DATABASE_H
 
 #include <stddef.h>
+#include <pthread.h>
 #include "kdtree.h"
 
 /**
@@ -22,6 +23,7 @@ typedef struct VectorDatabase {
     size_t size;           /**< Current size of the vector array */
     size_t capacity;       /**< Current capacity of the vector array */
     KDTree* kdtree;        /**< KD-Tree for efficient search operations */
+    pthread_mutex_t mutex;  // Add mutex to protect shared resources
 } VectorDatabase;
 
 /**

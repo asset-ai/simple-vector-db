@@ -1,12 +1,12 @@
 # Define the compiler and the flags
 CC = gcc
-CFLAGS = -Wall -I/opt/homebrew/include -I./include
+CFLAGS = -Wall -I/opt/homebrew/include -I./include -pthread
 # For debug add -g -fsanitize=address
 # lldb ./executable/vector_db_server
 # breakpoint set -n malloc_error_break
 # run
 # bt
-LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson
+LDFLAGS = -L/opt/homebrew/lib -lmicrohttpd -lcjson -pthread
 
 # Define the target executable and directory
 TARGET_DIR = executable
@@ -40,6 +40,5 @@ clean:
 # Clean up all generated files (object files and executable)
 clean-all:
 	rm -f $(OBJS) $(TARGET)
-	
 
 .PHONY: all clean clean-all
