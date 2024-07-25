@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <microhttpd.h>
 #include <cjson/cJSON.h>
@@ -177,7 +178,7 @@ static enum MHD_Result ahc_put(void *cls, struct MHD_Connection *connection,
  * @param con_cls Connection-specific data.
  * @return MHD_Result indicating the success or failure of the operation.
  */
-static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection *connection,
+static enum MHD_Result ahc_delete(void *cls, struct MHD_Connection* connection,
                                   const char *url, const char *method,
                                   const char *version, const char *upload_data,
                                   size_t *upload_data_size, void **con_cls) {
@@ -205,7 +206,7 @@ static enum MHD_Result ahc_compare(void *cls, struct MHD_Connection *connection,
 }
 
 /**
- * @brief Handler function for nearest neighbor requests.
+ * @brief Handler function for nearest neighbor search requests.
  *
  * @param cls User-defined data.
  * @param connection The connection object.
@@ -378,7 +379,7 @@ int main(int argc, char* argv[]) {
     struct MHD_Daemon *daemon;
 
     // Start the HTTP daemon
-    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, config.port, NULL, NULL,
+    daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_THREAD_PER_CONNECTION, config.port, NULL, NULL,
                               &access_handler, &handler_data,
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed_callback, NULL,
                               MHD_OPTION_END);
