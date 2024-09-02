@@ -196,6 +196,8 @@ chmod +x ./test/add_vectors.sh
 curl -X POST -H "Content-Type: application/json" -d '{"uuid": "123e4567-e89b-12d3-a456-426614174000", "vector": [1.23, 4.56, 7.89, 0.12, 3.45]}' http://localhost:8888/vector
 ```
 
+UUID is considered as the bridge (shared key for a chunk) between your application database and the simple vector database.
+
 **Response**:
 
 ```json
