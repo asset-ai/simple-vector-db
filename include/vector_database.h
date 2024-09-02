@@ -5,11 +5,14 @@
 #include <pthread.h>
 #include "kdtree.h"
 
+#define UUID_SIZE 37  // UUID Size(36 chars + 1 for '\0')
+
 /**
  * @struct Vector
  * @brief Represents a vector with its data.
  */
 typedef struct Vector {
+    char uuid[UUID_SIZE];  /**< UUID of the vector */
     size_t dimension;      /**< Dimension of the vector */
     double* data;          /**< Array of vector data */
 } Vector;
@@ -59,6 +62,16 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec);
  * @return Pointer to the vector at the specified index or NULL if the index is out of bounds.
  */
 Vector* vector_db_read(VectorDatabase* db, size_t index);
+
+/**
+ * @brief Reads a vector from the database, by uuid.
+ * 
+ * @param db Pointer to the VectorDatabase structure.
+ * @param uuid UUID of the vector to be read.
+ * @return Pointer to the vector at the specified index or NULL if the index is out of bounds.
+ */
+Vector* vector_db_read_by_uuid(VectorDatabase* db, const char* uuid);
+
 
 /**
  * @brief Updates a vector in the database.

@@ -193,7 +193,17 @@ chmod +x ./test/add_vectors.sh
 - **Request Body**: JSON array of float64 values.
 
 ```sh
-curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.0]' http://localhost:8888/vector
+curl -X POST -H "Content-Type: application/json" -d '{"uuid": "123e4567-e89b-12d3-a456-426614174000", "vector": [1.23, 4.56, 7.89, 0.12, 3.45]}' http://localhost:8888/vector
+```
+
+**Response**:
+
+```json
+{
+  "index": 2,
+  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937,6.389, 1.39],
+  "uuid": F07243B9-58D1-4A33-9670-C14FFA9050EF,
+}
 ```
 
 #### Retrieve a Vector
@@ -201,10 +211,23 @@ curl -X POST -H "Content-Type: application/json" -d '[1.0, 2.0, 3.0, 4.0]' http:
 - **Endpoint**: `/vector`
 - **Method**: `GET`
 - **Query Parameter**: `index` (the index of the vector to retrieve).
+- **Query Parameter**: `uuid` (the uuid of the vector to retrieve).
 
 ```sh
 curl "http://localhost:8888/vector?index=0"
+curl "http://localhost:8888/vector?uuid=0"
 ```
+
+**Response**:
+
+```json
+{
+  "index": 2,
+  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937,6.389, 1.39],
+  "uuid": F07243B9-58D1-4A33-9670-C14FFA9050EF,
+}
+```
+
 
 #### Update a Vector
 
@@ -272,7 +295,8 @@ curl -X POST -H "Content-Type: application/json" -d '[7,3.00003,6.32,4.5,8,5,1.8
 ```json
 {
   "index": 2,
-  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937,6.389, 1.39]
+  "vector": [1.0, 2.0, 3.0, 4.08993, 5.937,6.389, 1.39],
+  "uuid": F07243B9-58D1-4A33-9670-C14FFA9050EF,
 }
 ```
 

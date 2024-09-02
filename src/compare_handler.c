@@ -413,6 +413,7 @@ static enum MHD_Result nearest_handler_callback(void* cls, struct MHD_Connection
             cJSON* vector_array = cJSON_CreateDoubleArray(nearest_vector->data, nearest_vector->dimension);
             cJSON_AddNumberToObject(json_response, "index", nearest_index);
             cJSON_AddItemToObject(json_response, "vector", vector_array);
+            cJSON_AddStringToObject(json_response, "uuid", nearest_vector->uuid);
         } else {
             cJSON_AddStringToObject(json_response, "error", "Nearest neighbor not found");
         }

@@ -101,6 +101,10 @@ size_t vector_db_insert(VectorDatabase* db, Vector vec) {
         db->vectors = new_vectors;
         db->capacity = new_capacity;
     }
+
+    strncpy(db->vectors[db->size].uuid, vec.uuid, UUID_SIZE - 1);
+    db->vectors[db->size].uuid[UUID_SIZE - 1] = '\0';
+
     if (!db->kdtree) {
         fprintf(stderr, "KDTree is NULL before inserting\n");
         pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
@@ -130,6 +134,30 @@ Vector* vector_db_read(VectorDatabase* db, size_t index) {
     pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
     return vec;
 }
+
+/**
+ * @brief Read a vector from the vector database at a given UUID.
+ * 
+ * @param db Pointer to the vector database.
+ * @param uuid The UUID of the vector to read.
+ * @return Vector* Pointer to the vector, or NULL if the index is out of range.
+ */
+Vector* vector_db_read_by_uuid(VectorDatabase* db, const char* uuid) {
+    pthread_mutex_lock(&db->mutex);  // Lock the mutex
+
+    Vector* vec = NULL;
+    for (size_t i = 0; i < db->size; ++i) {
+        if (strncmp(db->vectors[i].uuid, uuid, UUID_SIZE) == 0) {
+            vec = &db->vectors[i];
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&db->mutex);  // Unlock the mutex
+    return vec;
+}
+
+
 
 /**
  * @brief Update a vector in the vector database at a given index.
@@ -189,6 +217,7 @@ void vector_db_save(VectorDatabase* db, const char* filename) {
             continue;
         }
         printf("Saving vector at index %zu with dimension %zu\n", i, db->vectors[i].dimension);
+        fwrite(db->vectors[i].uuid, sizeof(char), 37, file); // Assuming UUID is stored as a 36-char string + NULL terminator
         fwrite(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         fwrite(db->vectors[i].data, sizeof(double), db->vectors[i].dimension, file);
     }
@@ -227,6 +256,7 @@ VectorDatabase* vector_db_load(const char* filename, size_t dimension) {
         return NULL;
     }
     for (size_t i = 0; i < db->size; ++i) {
+        fread(db->vectors[i].uuid, sizeof(char), 37, file); // Assuming UUID is stored as a 36-char string + NULL terminator
         fread(&db->vectors[i].dimension, sizeof(size_t), 1, file);
         db->vectors[i].data = (double*)malloc(db->vectors[i].dimension * sizeof(double));
         if (!db->vectors[i].data) {
