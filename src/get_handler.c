@@ -75,12 +75,50 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
         return MHD_NO;
     }
 
-    // Retrieve the 'index' query parameter
+    // Retrieve the 'index' and 'uuid' query parameters
     const char* index_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "index");
+    const char* uuid_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "uuid");
 
-    if (!index_str) {
-        // Respond with an error if 'index' is missing
-        const char* error_msg = "{\"error\": \"Missing 'index' query parameter\"}";
+    Vector* vec = NULL;
+    size_t vec_index = 0; // Initialize index variable
+
+    if (index_str) {
+        // Handle request by index
+        vec_index = (size_t)atoi(index_str);
+        if (vec_index >= db->size) {
+            // Respond with an error if the index is out of bounds
+            const char* error_msg = "{\"error\": \"Index out of bounds\"}";
+            struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                            (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+            MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+            int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
+            MHD_destroy_response(response);
+            return ret == MHD_YES ? MHD_YES : MHD_NO;
+        }
+        vec = vector_db_read(db, vec_index);
+    } else if (uuid_str) {
+        // Handle request by UUID
+        vec = vector_db_read_by_uuid(db, uuid_str);
+        if (!vec) {
+            // Respond with an error if the vector is not found
+            const char* error_msg = "{\"error\": \"Vector not found\"}";
+            struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
+                                                                            (void*)error_msg, MHD_RESPMEM_PERSISTENT);
+            MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
+            int ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
+            MHD_destroy_response(response);
+            return ret == MHD_YES ? MHD_YES : MHD_NO;
+        }
+        // Find the index of the vector with the given UUID
+        for (size_t i = 0; i < db->size; ++i) {
+            if (strcmp(db->vectors[i].uuid, uuid_str) == 0) {
+                vec_index = i;
+                break;
+            }
+        }
+    } else {
+        // Respond with an error if neither 'index' nor 'uuid' is provided
+        const char* error_msg = "{\"error\": \"Missing 'index' or 'uuid' query parameter\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
                                                                         (void*)error_msg, MHD_RESPMEM_PERSISTENT);
         MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
@@ -89,33 +127,7 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
         return ret == MHD_YES ? MHD_YES : MHD_NO;
     }
 
-    // Convert the 'index' query parameter to a size_t value
-    size_t index = (size_t)atoi(index_str);
-    if (index >= db->size) {
-        // Respond with an error if the index is out of bounds
-        const char* error_msg = "{\"error\": \"Index out of bounds\"}";
-        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
-                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
-        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
-        int ret = MHD_queue_response(connection, MHD_HTTP_BAD_REQUEST, response);
-        MHD_destroy_response(response);
-        return ret == MHD_YES ? MHD_YES : MHD_NO;
-    }
-
-    // Read the vector from the database
-    Vector* vec = vector_db_read(db, index);
-    if (!vec) {
-        // Respond with an error if the vector is not found
-        const char* error_msg = "{\"error\": \"Vector not found\"}";
-        struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
-                                                                        (void*)error_msg, MHD_RESPMEM_PERSISTENT);
-        MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, "application/json");
-        int ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-        MHD_destroy_response(response);
-        return ret == MHD_YES ? MHD_YES : MHD_NO;
-    }
-
-    if (!vec->data) {
+    if (!vec || !vec->data) {
         // Respond with an error if the vector data is invalid
         const char* error_msg = "{\"error\": \"Vector data is invalid\"}";
         struct MHD_Response* response = MHD_create_response_from_buffer(strlen(error_msg),
@@ -158,7 +170,8 @@ static enum MHD_Result get_handler_callback(void* cls, struct MHD_Connection* co
     }
 
     // Add vector details to the JSON response
-    cJSON_AddNumberToObject(json_response, "index", index);
+    cJSON_AddStringToObject(json_response, "uuid", vec->uuid);  // Add UUID
+    cJSON_AddNumberToObject(json_response, "index", vec_index); // Add index
     cJSON_AddItemToObject(json_response, "vector", json_array);
 
     // Convert JSON object to string

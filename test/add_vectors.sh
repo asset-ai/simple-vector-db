@@ -4,7 +4,10 @@
 RANDOM=$$$(date +%s)
 
 for i in $(seq 1 100000); do
-  #vector_size=$(( (RANDOM % 10) + 1 ))
+  # Generate a UUID for each vector
+  uuid=$(uuidgen)
+
+  # Vector size (set to 128 for all vectors)
   vector_size=128
   vector="["
   for ((j=0; j<$vector_size; j++)); do
@@ -29,5 +32,10 @@ for i in $(seq 1 100000); do
     fi
   done
   vector="${vector}]"
-  curl -X POST -H "Content-Type: application/json" -d "${vector}" http://localhost:8888/vector
+
+  # Construct JSON payload with UUID and vector
+  json_payload=$(printf '{"uuid": "%s", "vector": %s}' "$uuid" "$vector")
+
+  # Send POST request with JSON payload
+  curl -X POST -H "Content-Type: application/json" -d "${json_payload}" http://localhost:8888/vector
 done
